@@ -1,0 +1,55 @@
+import aiohttp
+import certifi
+import ssl
+
+from config import MAX_API_URL
+
+
+class MaxBot:
+    def __init__(self, token: str):
+
+        self.token = token
+        self.session: aiohttp.ClientSession | None = None
+
+    async def start(self):
+
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        self.session = aiohttp.ClientSession(
+            connector=connector,
+            headers={
+                "Authorization": self.token,
+            },
+        )
+
+    async def close(self):
+        if self.session:
+            await self.session.close()
+
+    async def request(
+        self,
+        method: str,
+        endpoint: str,
+        **kwargs,
+    ):
+
+        if self.session is None:
+            raise RuntimeError("Max-HelperBot session is not started")
+
+        async with self.session.request(
+            method,
+            f"{MAX_API_URL}{endpoint}",
+            **kwargs,
+        ) as response:
+            response.raise_for_status()
+
+            if response.status == 204:
+                return None
+
+            return await response.json()
+
+    async def get_me(self):
+        return await self.request(
+            "GET",
+            "/me",
+        )

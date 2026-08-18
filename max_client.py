@@ -1,6 +1,7 @@
+import ssl
+
 import aiohttp
 import certifi
-import ssl
 
 from config import MAX_API_URL
 
@@ -19,6 +20,20 @@ class MaxBot:
             connector=connector,
             headers={
                 "Authorization": self.token,
+            },
+        )
+
+    async def subscribe_webhook(
+        self,
+        url: str,
+        secret: str,
+    ):
+        return await self.request(
+            "POST",
+            "/subscriptions",
+            json={
+                "url": url,
+                "secret": secret,
             },
         )
 

@@ -1,7 +1,6 @@
 import ssl
 
 import aiohttp
-import certifi
 
 from config import MAX_API_URL
 
@@ -13,9 +12,17 @@ class MaxBot:
         self.session: aiohttp.ClientSession | None = None
 
     async def start(self):
+        ssl_context = ssl.create_default_context()
+        ssl_context.load_verify_locations(
+            cafile=(
+                "usr/local/share/ca-certificates/"
+                "russian-trusted/"
+                "russian_trusted_root_ca_pem.crt"
+            )
+        )
 
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
         connector = aiohttp.TCPConnector(ssl=ssl_context)
+
         self.session = aiohttp.ClientSession(
             connector=connector,
             headers={

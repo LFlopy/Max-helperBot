@@ -15,7 +15,7 @@ class MaxBot:
         ssl_context = ssl.create_default_context()
         ssl_context.load_verify_locations(
             cafile=(
-                "usr/local/share/ca-certificates/"
+                "/usr/local/share/ca-certificates/"
                 "russian-trusted/"
                 "russian_trusted_root_ca_pem.crt"
             )

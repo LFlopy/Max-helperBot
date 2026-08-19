@@ -1,5 +1,5 @@
 import ssl
-
+from typing import Any
 import aiohttp
 
 from config import MAX_API_URL
@@ -52,8 +52,8 @@ class MaxBot:
         self,
         method: str,
         endpoint: str,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> dict[str, Any] | None:
 
         if self.session is None:
             raise RuntimeError("Max-HelperBot session is not started")
@@ -68,10 +68,40 @@ class MaxBot:
             if response.status == 204:
                 return None
 
-            return await response.json()
+            data = await response.json()
+
+            if not isinstance(data, dict):
+                raise TypeError("MAX API returned unexpected response")
 
     async def get_me(self):
         return await self.request(
             "GET",
             "/me",
         )
+
+    async def send_message(
+        self,
+        user_id: int,
+        text: str,
+        attachments: list | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "text": text,
+        }
+
+        if attachments is not None:
+            payload["attachments"] = attachments
+
+        result = await self.request(
+            "POST",
+            "/message",
+            params={
+                "user_id": user_id,
+            },
+            json=payload,
+        )
+
+        if result is None:
+            raise RuntimeError("MAX API returned an empty response")
+
+        return result

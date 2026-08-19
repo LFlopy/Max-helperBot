@@ -2,8 +2,11 @@ import asyncio
 
 from aiohttp import web
 
+from bot import dispatcher
 from config import MAX_BOT_TOKEN, WEBHOOK_SECRET
 from max_client import MaxBot
+from bot.dispatcher import Dispatcher
+from bot.handlers.user.start import router as start_router
 
 
 async def webhook_handler(request: web.Request):
@@ -14,7 +17,13 @@ async def webhook_handler(request: web.Request):
 
     update = await request.json()
 
-    print(update)
+    bot: MaxBot = request.app["bot"]
+    dispatcher: Dispatcher = request.app["dispatcher"]
+
+    await dispatcher.dispatch(
+        bot=bot,
+        update=update,
+    )
 
     return web.Response(status=200)
 
@@ -23,9 +32,13 @@ async def main():
     bot = MaxBot(MAX_BOT_TOKEN)
     await bot.start()
 
+    dispatcher = Dispatcher()
+    dispatcher.include_router(start_router)
+
     app = web.Application()
 
     app["bot"] = bot
+    app["dispatcher"] = dispatcher
 
     app.router.add_post(
         "/max-helper/webhook",
@@ -49,12 +62,6 @@ async def main():
     finally:
         await bot.close()
         await runner.cleanup()
-
-    result = await bot.subscribe_webhook(
-        "https://ovchuntonova.ru/max-helper/webhook",
-        WEBHOOK_SECRET,
-    )
-    print(result)
 
 
 if __name__ == "__main__":

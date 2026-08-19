@@ -94,7 +94,7 @@ class MaxBot:
 
         result = await self.request(
             "POST",
-            "/message",
+            "/messages",
             params={
                 "user_id": user_id,
             },

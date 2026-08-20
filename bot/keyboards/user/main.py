@@ -3,11 +3,13 @@ def start_keyboard() -> dict:
         "type": "inline_keyboard",
         "payload": {
             "buttons": [
-                {
-                    "type": "callback",
-                    "text": "Что я умею",
-                    "payload": "user:capabilities",
-                }
+                [
+                    {
+                        "type": "callback",
+                        "text": "Что я умею",
+                        "payload": "user:capabilities",
+                    }
+                ]
             ]
         },
     }

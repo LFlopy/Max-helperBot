@@ -1,3 +1,4 @@
+from bot import router
 from max_client import MaxBot
 from bot.router import Router
 
@@ -22,6 +23,11 @@ class Dispatcher:
                 bot=bot,
                 update=update,
             )
+        elif update_type == "message_callback":
+            await self._dispatch_callback(
+                bot=bot,
+                update=update,
+            )
 
     async def _dispach_message(
         self,
@@ -39,6 +45,24 @@ class Dispatcher:
         for router in self.routers:
             handler = router.message_handlers.get(text)
 
+            if handler is not None:
+                await handler(bot, update)
+                return
+
+    async def _dispatch_callback(
+        self,
+        bot: MaxBot,
+        update: dict,
+    ) -> None:
+        callback = update.get("callback", {})
+
+        payload = callback.get("payload", {})
+
+        if not payload:
+            return
+
+        for router in self.routers:
+            handler = router.callback_handlers.get(payload)
             if handler is not None:
                 await handler(bot, update)
                 return

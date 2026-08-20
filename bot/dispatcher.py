@@ -56,7 +56,7 @@ class Dispatcher:
     ) -> None:
         callback = update.get("callback", {})
 
-        payload = callback.get("payload", {})
+        payload = callback.get("payload")
 
         if not payload:
             return

@@ -1,4 +1,4 @@
-def capabilities_keyoard() -> dict:
+def capabilities_keyboard() -> dict:
     return {
         "type": "inline_keyboard",
         "payload": {

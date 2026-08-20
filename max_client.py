@@ -113,17 +113,18 @@ class MaxBot:
         callback_id: str,
         message: dict | None = None,
     ) -> dict:
+        payload: dict[str, object] = {}
+
+        if message is not None:
+            payload["message"] = message
+
         result = await self.request(
             "POST",
             "/answers",
             params={
                 "callback_id": callback_id,
             },
-            json={
-                "message": message,
-            }
-            if message is not None
-            else None,
+            json=payload,
         )
 
         if result is None:

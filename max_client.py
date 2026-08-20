@@ -73,6 +73,8 @@ class MaxBot:
             if not isinstance(data, dict):
                 raise TypeError("MAX API returned unexpected response")
 
+            return data
+
     async def get_me(self):
         return await self.request(
             "GET",

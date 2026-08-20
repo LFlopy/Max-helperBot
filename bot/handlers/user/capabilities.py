@@ -16,7 +16,7 @@ async def handle_user_capabilities(
     message = update.get("message", {})
 
     callback_id = callback.get(
-        "callback",
+        "callback_id",
         "",
     )
     sender = callback.get(

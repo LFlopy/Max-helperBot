@@ -1,4 +1,3 @@
-from bot import router
 from max_client import MaxBot
 from bot.router import Router
 

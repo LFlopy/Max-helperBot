@@ -7,6 +7,7 @@ from config import MAX_BOT_TOKEN, WEBHOOK_SECRET
 from max_client import MaxBot
 from bot.dispatcher import Dispatcher
 from bot.handlers.user.start import router as start_router
+from bot.handlers.user.capabilities import router as capabilities_router
 
 
 async def webhook_handler(request: web.Request):
@@ -34,6 +35,7 @@ async def main():
 
     dispatcher = Dispatcher()
     dispatcher.include_router(start_router)
+    dispatcher.include_router(capabilities_router)
 
     app = web.Application()
 

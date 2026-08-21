@@ -19,6 +19,7 @@ async def handle_user_capabilities(
         "callback_id",
         "",
     )
+
     sender = callback.get(
         "user",
         callback.get("sender", {}),
@@ -29,13 +30,16 @@ async def handle_user_capabilities(
         {},
     )
     chat_id = int(recipient.get("chat_id") or user_id)
-    await bot.answer_callback(callback_id)
-    await bot.send_message(
-        user_id=chat_id,
-        text=(
-            "Вот с чем ко мне обычно приходят\n\n"
-            "Выбери, что ближе - расскажу, как спросить"
-            "И чем помогу."
+    await bot.answer_callback(
+    callback_id=callback_id,
+    message={
+        "text": (
+            "Вот с чем ко мне обычно приходят 👇\n\n"
+            "Выбери, что ближе — расскажу, как спросить "
+            "и чем помогу."
         ),
-        attachments=[capabilities_keyboard()],
-    )
+        "attachments": [
+            capabilities_keyboard()
+        ],
+    },
+)

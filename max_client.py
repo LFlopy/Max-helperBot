@@ -111,23 +111,19 @@ class MaxBot:
     async def answer_callback(
         self,
         callback_id: str,
-        message: dict | None = None,
-    ) -> dict:
-        payload: dict[str, object] = {}
-
-        if message is not None:
-            payload["message"] = message
-
+        message: dict,
+    ) -> dict[str, Any]:
         result = await self.request(
-            "POST",
-            "/answers",
-            params={
-                "callback_id": callback_id,
-            },
-            json=payload,
-        )
+                "POST",
+                "/answers",
+                params = {
+                    "callback_id": callback_id,
+                    },
+                json = {
+                    "message": message,
+                    },
+                )
 
         if result is None:
             raise RuntimeError("MAX API returned an empty response")
-
         return result

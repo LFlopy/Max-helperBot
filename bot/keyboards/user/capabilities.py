@@ -35,7 +35,7 @@ def capabilities_keyboard() -> dict:
                     {
                         "type": "callback",
                         "text": "Анализы",
-                        "payloaf": "nothing for now",
+                        "payload": "nothing for now",
                     }
                 ],
                 [

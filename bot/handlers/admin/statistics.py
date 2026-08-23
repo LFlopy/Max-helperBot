@@ -31,8 +31,8 @@ async def handle_statistics(
     await bot.answer_callback(
         callback_id=callback_id,
         message={
-            "text": {
+            "text": (
                 "Статистика\n\nПользователей:0\n\nАктивных подписок:0\n\nВыручка:0\n\n"
-            }
+            )
         },
     )

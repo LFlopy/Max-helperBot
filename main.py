@@ -3,6 +3,7 @@ import asyncio
 from aiohttp import web
 
 from bot import dispatcher
+from bot.handlers.admin import broadcasts
 from config import MAX_BOT_TOKEN, WEBHOOK_SECRET
 from max_client import MaxBot
 from bot.dispatcher import Dispatcher
@@ -10,6 +11,7 @@ from bot.handlers.user.start import router as start_router
 from bot.handlers.user.capabilities import router as capabilities_router
 from bot.handlers.admin.main import router as admin_main
 from bot.handlers.admin.statistics import router as statistics_router
+from bot.handlers.admin.broadcasts import router as broadcasts_router
 
 
 async def webhook_handler(request: web.Request):
@@ -40,6 +42,7 @@ async def main():
     dispatcher.include_router(capabilities_router)
     dispatcher.include_router(admin_main)
     dispatcher.include_router(statistics_router)
+    dispatcher.include_router(broadcasts_router)
 
     app = web.Application()
 

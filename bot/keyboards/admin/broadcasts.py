@@ -1,6 +1,6 @@
 def broadcasts_keyboard() -> dict:
     return {
-        "type": "inline-keyboard",
+        "type": "inline_keyboard",
         "payload": {
             "buttons": [
                 [

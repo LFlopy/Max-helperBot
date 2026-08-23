@@ -9,6 +9,7 @@ from bot.dispatcher import Dispatcher
 from bot.handlers.user.start import router as start_router
 from bot.handlers.user.capabilities import router as capabilities_router
 from bot.handlers.admin.main import router as admin_main
+from bot.handlers.admin.statistics import router as statistics_router
 
 
 async def webhook_handler(request: web.Request):
@@ -38,6 +39,8 @@ async def main():
     dispatcher.include_router(start_router)
     dispatcher.include_router(capabilities_router)
     dispatcher.include_router(admin_main)
+    dispatcher.include_router(statistics_router)
+
     app = web.Application()
 
     app["bot"] = bot

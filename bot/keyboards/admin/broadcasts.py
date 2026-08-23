@@ -1,6 +1,3 @@
-from asyncio.streams import _ClientConnectedCallback
-
-
 def broadcasts_keyboard() -> dict:
     return {
         "type": "inline-keyboard",

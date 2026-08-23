@@ -1,6 +1,6 @@
 def admin_main_keyboard() -> dict:
     return {
-        "type": "inline-keyoard",
+        "type": "inline-keyboard",
         "payload": {
             "buttons": [
                 [

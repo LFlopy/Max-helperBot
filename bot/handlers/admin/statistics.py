@@ -1,3 +1,4 @@
+from bot.keyboards.admin.statistics import back
 from max_client import MaxBot
 from config import ADMIN_IDS
 from bot.router import Router
@@ -33,6 +34,7 @@ async def handle_statistics(
         message={
             "text": (
                 "Статистика\n\nПользователей:0\n\nАктивных подписок:0\n\nВыручка:0\n\n"
-            )
+            ),
+            "attachments": [back()],
         },
     )

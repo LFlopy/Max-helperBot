@@ -52,6 +52,13 @@ def capabilities_keyboard() -> dict:
                         "payload": "nothing for now",
                     }
                 ],
+                [
+                    {
+                        "type": "callback",
+                        "text": "Главное меню",
+                        "payload": "user:main",
+                    }
+                ],
             ]
         },
     }

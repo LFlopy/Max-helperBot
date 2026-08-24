@@ -1,4 +1,4 @@
-def broadcasts_keyboard() -> dict:
+def admin_main_menu() -> dict:
     return {
         "type": "inline_keyboard",
         "payload": {
@@ -6,25 +6,24 @@ def broadcasts_keyboard() -> dict:
                 [
                     {
                         "type": "callback",
-                        "text": "Для всех",
-                        "payload": "broadcasts:to everyone",
+                        "text": "Что я умею",
+                        "payload": "user:capabilities",
                     }
                 ],
                 [
                     {
                         "type": "callback",
-                        "text": "определённая группа",
-                        "payload": "broadcasts:some one",
+                        "text": "Профиль",
+                        "payload": "user:profile",
                     }
                 ],
                 [
                     {
                         "type": "callback",
-                        "text": "Догревающая рассылка",
-                        "payload": "broadcasts:heating up",
+                        "text": "Админ панель",
+                        "payload": "admin:main",
                     }
                 ],
-                [{"type": "callback", "text": "Назад", "payload": "admin:main"}],
             ]
         },
     }

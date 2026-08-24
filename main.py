@@ -13,7 +13,6 @@ from bot.handlers.user.capabilities import router as capabilities_router
 from bot.handlers.admin.main import router as admin_main
 from bot.handlers.admin.statistics import router as statistics_router
 from bot.handlers.admin.broadcasts import router as broadcasts_router
-from bot.handlers.admin.main_menu import router as admin_main_menu_router
 from bot.handlers.user.main_menu import router as main_menu_router
 
 
@@ -46,7 +45,6 @@ async def main():
     dispatcher.include_router(admin_main)
     dispatcher.include_router(statistics_router)
     dispatcher.include_router(broadcasts_router)
-    dispatcher.include_router(admin_main_menu_router)
     dispatcher.include_router(main_menu_router)
 
     app = web.Application()

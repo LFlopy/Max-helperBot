@@ -1,6 +1,8 @@
+from bot.keyboards.admin.main_menu import admin_main_menu
 from bot.keyboards.user.main_menu import main_menu
-from max_client import MaxBot
 from bot.router import Router
+from config import ADMIN_IDS
+from max_client import MaxBot
 
 
 router = Router()
@@ -13,27 +15,29 @@ async def handle_user_main(
 ) -> None:
     callback = update.get("callback", {})
 
-    message = update.get("message", {})
+    callback_id = callback.get("callback_id")
 
-    callback_id = callback.get(
-        "callback_id",
-        "",
-    )
+    if not callback_id:
+        return
 
-    sender = callback.get(
+    user = callback.get(
         "user",
         callback.get("sender", {}),
     )
-    user_id = int(sender.get("user_id", 0))
-    recipient = message.get(
-        "recipient",
-        {},
-    )
-    chat_id = int(recipient.get("chat_id") or user_id)
+
+    user_id = int(user.get("user_id", 0))
+
+    if user_id in ADMIN_IDS:
+        keyboard = admin_main_menu()
+    else:
+        keyboard = main_menu()
+
     await bot.answer_callback(
         callback_id=callback_id,
         message={
-            "text": ("Главное меню"),
-            "attachments": [main_menu()],
+            "text": "Главное меню",
+            "attachments": [
+                keyboard,
+            ],
         },
     )

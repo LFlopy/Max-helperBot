@@ -1,4 +1,3 @@
-from bot import router
 from bot.keyboards.admin.main import admin_main_keyboard
 from bot.router import Router
 from config import ADMIN_IDS
@@ -8,20 +7,51 @@ from max_client import MaxBot
 router = Router()
 
 
-@router.message("/admin")
-async def admin_handle_admin(
+async def show_admin(
     bot: MaxBot,
-    update: dict,
+    user_id: int,
 ) -> None:
-    message = update["message"]
-
-    user_id = message["sender"]["user_id"]
-
     if user_id not in ADMIN_IDS:
         return
 
     await bot.send_message(
         user_id=user_id,
         text="Админ панель",
-        attachments=[admin_main_keyboard()],
+        attachments=[
+            admin_main_keyboard(),
+        ],
+    )
+
+
+@router.message("/admin")
+async def admin_handle_admin(
+    bot: MaxBot,
+    update: dict,
+) -> None:
+    message = update["message"]
+    user_id = message["sender"]["user_id"]
+
+    await show_admin(
+        bot=bot,
+        user_id=user_id,
+    )
+
+
+@router.callback("admin:main")
+async def admin_handle_main_callback(
+    bot: MaxBot,
+    update: dict,
+) -> None:
+    callback = update["callback"]
+
+    user = callback.get(
+        "user",
+        callback.get("sender", {}),
+    )
+
+    user_id = int(user.get("user_id", 0))
+
+    await show_admin(
+        bot=bot,
+        user_id=user_id,
     )

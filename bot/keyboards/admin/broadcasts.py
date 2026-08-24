@@ -24,7 +24,13 @@ def broadcasts_keyboard() -> dict:
                         "payload": "broadcasts:heating up",
                     }
                 ],
-                [{"type": "callback", "text": "Назад", "payload": "admin:main"}],
+                [
+                    {
+                        "type": "callback",
+                        "text": "Назад",
+                        "payload": "admin:main",
+                    }
+                ],
             ]
         },
     }

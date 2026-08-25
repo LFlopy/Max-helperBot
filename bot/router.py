@@ -1,16 +1,18 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 
 from max_client import MaxBot
 
 
 Handler = Callable[[MaxBot, dict], Awaitable[None]]
+StateHandler = Callable[[MaxBot, dict, str], Awaitable[None]]
+RouteMap = Mapping[str, Handler | StateHandler]
 
 
 class Router:
     def __init__(self) -> None:
         self.message_handlers: dict[str, Handler] = {}
         self.callback_handlers: dict[str, Handler] = {}
-        self.state_handlers: dict[str, Handler] = {}
+        self.state_handlers: dict[str, StateHandler] = {}
 
     def message(self, command: str):
         def decorator(handler: Handler) -> Handler:
@@ -27,7 +29,7 @@ class Router:
         return decorator
 
     def state(self, state: str):
-        def decorator(handler: Handler) -> Handler:
+        def decorator(handler: StateHandler) -> StateHandler:
             self.state_handlers[state] = handler
             return handler
 

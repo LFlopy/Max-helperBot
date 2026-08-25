@@ -1,5 +1,5 @@
 from max_client import MaxBot
-from bot.router import Handler, Router
+from bot.router import Handler, Router, RouteMap, StateHandler
 from bot.states.fsm import fsm
 
 
@@ -8,7 +8,7 @@ class Dispatcher:
         self.routers: list[Router] = []
         self.message_handlers: dict[str, Handler] = {}
         self.callback_handlers: dict[str, Handler] = {}
-        self.state_handlers: dict[str, Handler] = {}
+        self.state_handlers: dict[str, StateHandler] = {}
 
     def include_router(self, router: Router) -> None:
         self._ensure_unique_routes(
@@ -38,8 +38,8 @@ class Dispatcher:
 
     @staticmethod
     def _ensure_unique_routes(
-        source: dict[str, Handler],
-        target: dict[str, Handler],
+        source: RouteMap,
+        target: RouteMap,
         handler_type: str,
     ) -> None:
         duplicate_routes = set(source) & set(target)
@@ -85,10 +85,21 @@ class Dispatcher:
         state = await fsm.get_state(user_id)
 
         if state is not None:
-            handler = self.state_handlers.get(state)
+            state_namespace = state.split(
+                ":",
+                1,
+            )[0]
+            handler = self.state_handlers.get(
+                state,
+                self.state_handlers.get(state_namespace),
+            )
 
             if handler is not None:
-                await handler(bot, update)
+                await handler(
+                    bot,
+                    update,
+                    state,
+                )
                 return
 
         handler = self.message_handlers.get(text)

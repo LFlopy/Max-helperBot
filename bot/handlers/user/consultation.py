@@ -12,9 +12,9 @@ async def handle_consultation_message(
     update: dict,
     state: str,
 ) -> None:
-    message = update.get("message", {})
-    body = message.get("body", {})
-    sender = message.get("sender", {})
+    message = update.get("message") or {}
+    body = message.get("body") or {}
+    sender = message.get("sender") or {}
 
     user_id = int(sender.get("user_id", 0))
     text = body.get("text", "")

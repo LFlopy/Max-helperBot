@@ -72,15 +72,12 @@ class Dispatcher:
         bot: MaxBot,
         update: dict,
     ) -> None:
-        message = update.get("message", {})
-        body = message.get("body", {})
-        sender = message.get("sender", {})
+        message = update.get("message") or {}
+        body = message.get("body") or {}
+        sender = message.get("sender") or {}
 
         text = body.get("text")
         user_id = int(sender.get("user_id", 0))
-
-        if not text:
-            return
 
         state = await fsm.get_state(user_id)
 
@@ -101,6 +98,9 @@ class Dispatcher:
                     state,
                 )
                 return
+
+        if not text:
+            return
 
         handler = self.message_handlers.get(text)
 

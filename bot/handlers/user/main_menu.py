@@ -1,6 +1,7 @@
 from bot.keyboards.admin.main_menu import admin_main_menu
 from bot.keyboards.user.main_menu import main_menu
 from bot.router import Router
+from bot.states.fsm import fsm
 from config import ADMIN_IDS
 from max_client import MaxBot
 
@@ -26,6 +27,8 @@ async def handle_user_main(
     )
 
     user_id = int(user.get("user_id", 0))
+
+    await fsm.clear(user_id)
 
     if user_id in ADMIN_IDS:
         keyboard = admin_main_menu()

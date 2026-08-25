@@ -79,6 +79,15 @@ class Dispatcher:
         text = body.get("text")
         user_id = int(sender.get("user_id", 0))
 
+        if text and text.startswith("/"):
+            handler = self.message_handlers.get(text)
+
+            if handler is not None:
+                await handler(bot, update)
+                return
+
+            return
+
         state = await fsm.get_state(user_id)
 
         if state is not None:

@@ -1,14 +1,52 @@
 from max_client import MaxBot
-from bot.router import Router
+from bot.router import Handler, Router
 from bot.states.fsm import fsm
 
 
 class Dispatcher:
     def __init__(self) -> None:
         self.routers: list[Router] = []
+        self.message_handlers: dict[str, Handler] = {}
+        self.callback_handlers: dict[str, Handler] = {}
+        self.state_handlers: dict[str, Handler] = {}
 
     def include_router(self, router: Router) -> None:
+        self._ensure_unique_routes(
+            source=router.message_handlers,
+            target=self.message_handlers,
+            handler_type="message",
+        )
+        self._ensure_unique_routes(
+            source=router.callback_handlers,
+            target=self.callback_handlers,
+            handler_type="callback",
+        )
+        self._ensure_unique_routes(
+            source=router.state_handlers,
+            target=self.state_handlers,
+            handler_type="state",
+        )
+
         self.routers.append(router)
+        self.message_handlers.update(router.message_handlers)
+        self.callback_handlers.update(router.callback_handlers)
+        self.state_handlers.update(router.state_handlers)
+
+    def include_routers(self, *routers: Router) -> None:
+        for router in routers:
+            self.include_router(router)
+
+    @staticmethod
+    def _ensure_unique_routes(
+        source: dict[str, Handler],
+        target: dict[str, Handler],
+        handler_type: str,
+    ) -> None:
+        duplicate_routes = set(source) & set(target)
+
+        if duplicate_routes:
+            routes = ", ".join(sorted(duplicate_routes))
+            raise ValueError(f"Duplicate {handler_type} routes: {routes}")
 
     async def dispatch(
         self,
@@ -19,7 +57,7 @@ class Dispatcher:
         update_type = update.get("update_type")
 
         if update_type == "message_created":
-            await self._dispach_message(
+            await self._dispatch_message(
                 bot=bot,
                 update=update,
             )
@@ -29,7 +67,7 @@ class Dispatcher:
                 update=update,
             )
 
-    async def _dispach_message(
+    async def _dispatch_message(
         self,
         bot: MaxBot,
         update: dict,
@@ -47,19 +85,17 @@ class Dispatcher:
         state = await fsm.get_state(user_id)
 
         if state is not None:
-            for router in self.routers:
-                handler = router.state_handlers.get(state)
-
-                if handler is not None:
-                    await handler(bot, update)
-                    return
-
-        for router in self.routers:
-            handler = router.message_handlers.get(text)
+            handler = self.state_handlers.get(state)
 
             if handler is not None:
                 await handler(bot, update)
                 return
+
+        handler = self.message_handlers.get(text)
+
+        if handler is not None:
+            await handler(bot, update)
+            return
 
     async def _dispatch_callback(
         self,
@@ -73,8 +109,7 @@ class Dispatcher:
         if not payload:
             return
 
-        for router in self.routers:
-            handler = router.callback_handlers.get(payload)
-            if handler is not None:
-                await handler(bot, update)
-                return
+        handler = self.callback_handlers.get(payload)
+        if handler is not None:
+            await handler(bot, update)
+            return

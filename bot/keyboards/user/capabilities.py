@@ -7,49 +7,49 @@ def capabilities_keyboard() -> dict:
                     {
                         "type": "callback",
                         "text": "Питание",
-                        "payload": "nothing for now",
+                        "payload": "capabilities:food",
                     }
                 ],
                 [
                     {
                         "type": "callback",
                         "text": "Вес",
-                        "payload": "nothing for now",
+                        "payload": "capabilities:weight",
                     }
                 ],
                 [
                     {
                         "type": "callback",
                         "text": "Сон",
-                        "payload": "nothing for now",
+                        "payload": "capabilities:sleep",
                     }
                 ],
                 [
                     {
                         "type": "callback",
                         "text": "Стресс",
-                        "payload": "nothing for now",
+                        "payload": "capabilities:stress",
                     }
                 ],
                 [
                     {
                         "type": "callback",
                         "text": "Анализы",
-                        "payload": "nothing for now",
+                        "payload": "capabilities:analyses",
                     }
                 ],
                 [
                     {
                         "type": "callback",
                         "text": "Гормоны и цикл",
-                        "payload": "nothing for now",
+                        "payload": "capabilities:hormones",
                     }
                 ],
                 [
                     {
                         "type": "callback",
                         "text": "Другой вопрос",
-                        "payload": "nothing for now",
+                        "payload": "capabilities:another",
                     }
                 ],
                 [

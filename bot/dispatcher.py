@@ -1,5 +1,6 @@
 from max_client import MaxBot
 from bot.router import Router
+from bot.states.fsm import fsm
 
 
 class Dispatcher:
@@ -35,11 +36,23 @@ class Dispatcher:
     ) -> None:
         message = update.get("message", {})
         body = message.get("body", {})
+        sender = message.get("sender", {})
 
         text = body.get("text")
+        user_id = int(sender.get("user_id", 0))
 
         if not text:
             return
+
+        state = await fsm.get_state(user_id)
+
+        if state is not None:
+            for router in self.routers:
+                handler = router.state_handlers.get(state)
+
+                if handler is not None:
+                    await handler(bot, update)
+                    return
 
         for router in self.routers:
             handler = router.message_handlers.get(text)

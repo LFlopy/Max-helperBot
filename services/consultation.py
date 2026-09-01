@@ -1,12 +1,25 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from database.models import Message
 from database.repositories import MessageRepository, UserRepository
+from services.ai import AIClient, AIMessage, get_ai_client
+from services.prompts import CONSULTATION_SYSTEM_PROMPT
 
 
 class ConsultationService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        ai_client: AIClient | None = None,
+        history_limit: int = 20,
+    ) -> None:
+        if history_limit < 1:
+            raise ValueError("history_limit must be positive")
+
         self.users = UserRepository(session)
         self.messages = MessageRepository(session)
+        self.ai_client = ai_client or get_ai_client()
+        self.history_limit = history_limit
 
     async def process_message(
         self,
@@ -26,12 +39,19 @@ class ConsultationService:
         )
         history = await self.messages.get_recent_by_user(
             user_id=user.id,
-            limit=20,
+            limit=self.history_limit,
         )
 
-        response = (
-            f"Тема: {topic}\n\n"
-            f"Получил сообщение:\n{content}"
+        context = [
+            AIMessage(
+                role="system",
+                content=f"Текущая тема консультации: {topic}.",
+            ),
+            *self._to_ai_messages(history),
+        ]
+        response = await self.ai_client.generate(
+            system_prompt=CONSULTATION_SYSTEM_PROMPT,
+            messages=context,
         )
 
         await self.messages.create(
@@ -41,3 +61,15 @@ class ConsultationService:
         )
 
         return response
+
+    @staticmethod
+    def _to_ai_messages(messages: list[Message]) -> list[AIMessage]:
+        context: list[AIMessage] = []
+        for message in messages:
+            if message.role == "user":
+                context.append(AIMessage(role="user", content=message.content))
+            elif message.role == "assistant":
+                context.append(
+                    AIMessage(role="assistant", content=message.content)
+                )
+        return context

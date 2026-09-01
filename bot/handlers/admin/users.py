@@ -6,6 +6,7 @@ from bot.keyboards.admin.users import (
     subscription_management_keyboard,
     tariff_selection_keyboard,
     user_card_keyboard,
+    users_back_keyboard,
     users_keyboard,
 )
 from bot.router import Router
@@ -119,7 +120,10 @@ async def _show_user_card(
     if card is None:
         await bot.answer_callback(
             callback_id=callback_id,
-            message={"text": "Пользователь не найден."},
+            message={
+                "text": "Пользователь не найден.",
+                "attachments": [users_back_keyboard(return_page)],
+            },
         )
         return
     await bot.answer_callback(
@@ -202,7 +206,11 @@ async def handle_user_card(bot: MaxBot, update: dict) -> None:
         )
         return
 
-    if len(parts) == 8 and parts[3:5] == ["grant", "tariff"]:
+    if (
+        len(parts) == 8
+        and parts[3:5] == ["grant", "tariff"]
+        and parts[6] == "page"
+    ):
         try:
             tariff_id = int(parts[5])
         except ValueError:
@@ -213,7 +221,15 @@ async def handle_user_card(bot: MaxBot, update: dict) -> None:
         if tariff is None:
             await bot.answer_callback(
                 callback_id=callback_id,
-                message={"text": "Тариф больше недоступен."},
+                message={
+                    "text": "Тариф больше недоступен.",
+                    "attachments": [
+                        subscription_management_keyboard(
+                            user_id,
+                            return_page,
+                        )
+                    ],
+                },
             )
             return
         await bot.answer_callback(
@@ -252,7 +268,15 @@ async def handle_user_card(bot: MaxBot, update: dict) -> None:
         except AdminTariffUnavailableError:
             await bot.answer_callback(
                 callback_id=callback_id,
-                message={"text": "Тариф больше недоступен."},
+                message={
+                    "text": "Тариф больше недоступен.",
+                    "attachments": [
+                        subscription_management_keyboard(
+                            user_id,
+                            return_page,
+                        )
+                    ],
+                },
             )
             return
         await _show_user_card(bot, callback_id, user_id, return_page)

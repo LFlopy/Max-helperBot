@@ -31,13 +31,6 @@ def admin_main_keyboard() -> dict:
                         "payload": "admin:statistics",
                     }
                 ],
-                [
-                    {
-                        "type": "callback",
-                        "text": "Настройки",
-                        "payload": "admin:settings",
-                    }
-                ],
             ]
         },
     }

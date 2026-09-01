@@ -80,6 +80,23 @@ def user_card_keyboard(card: AdminUserCard, return_page: int) -> dict:
     }
 
 
+def users_back_keyboard(return_page: int) -> dict:
+    return {
+        "type": "inline_keyboard",
+        "payload": {
+            "buttons": [
+                [
+                    {
+                        "type": "callback",
+                        "text": "Назад",
+                        "payload": f"admin:users:page:{return_page}",
+                    }
+                ]
+            ]
+        },
+    }
+
+
 def subscription_management_keyboard(user_id: int, return_page: int) -> dict:
     return {
         "type": "inline_keyboard",

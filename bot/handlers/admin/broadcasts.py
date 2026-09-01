@@ -100,7 +100,10 @@ async def confirm_broadcast(bot: MaxBot, update: dict) -> None:
     if not isinstance(text, str):
         await bot.answer_callback(
             callback_id=callback_id,
-            message={"text": "Черновик рассылки не найден."},
+            message={
+                "text": "Черновик рассылки не найден.",
+                "attachments": [broadcasts_keyboard()],
+            },
         )
         return
 

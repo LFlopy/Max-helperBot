@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import TRIAL_DURATION_DAYS, TRIAL_HISTORY_LIMIT
 from database.models import Subscription
 from database.repositories import (
     SubscriptionRepository,
@@ -19,20 +20,67 @@ class UserAccess:
     tariff_name: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class TrialAccess:
+    starts_at: datetime
+    expires_at: datetime
+
+
+class TrialAlreadyUsedError(Exception):
+    pass
+
+
 class SubscriptionService:
     def __init__(
         self,
         session: AsyncSession,
         free_history_limit: int,
+        trial_duration_days: int = TRIAL_DURATION_DAYS,
+        trial_history_limit: int = TRIAL_HISTORY_LIMIT,
     ) -> None:
         if free_history_limit < 1:
             raise ValueError("free_history_limit must be positive")
+        if trial_duration_days < 1:
+            raise ValueError("trial_duration_days must be positive")
+        if trial_history_limit < 1:
+            raise ValueError("trial_history_limit must be positive")
 
         self.session = session
         self.subscriptions = SubscriptionRepository(session)
         self.tariffs = TariffRepository(session)
         self.users = UserRepository(session)
         self.free_history_limit = free_history_limit
+        self.trial_duration_days = trial_duration_days
+        self.trial_history_limit = trial_history_limit
+
+    async def activate_trial(
+        self,
+        user_id: int,
+        now: datetime | None = None,
+    ) -> TrialAccess:
+        current_time = now or datetime.now(timezone.utc)
+        if current_time.tzinfo is None:
+            raise ValueError("now must be timezone-aware")
+
+        try:
+            user = await self.users.get_by_id(user_id, for_update=True)
+            if user is None:
+                raise ValueError("User not found")
+            if user.trial_used_at is not None:
+                raise TrialAlreadyUsedError("Trial has already been used")
+
+            await self.users.mark_trial_used(user, current_time)
+            await self.session.commit()
+            await self.session.refresh(user)
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        return TrialAccess(
+            starts_at=current_time,
+            expires_at=current_time
+            + timedelta(days=self.trial_duration_days),
+        )
 
     async def grant_paid_subscription(
         self,

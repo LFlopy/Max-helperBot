@@ -28,8 +28,22 @@ try:
 except ValueError as error:
     raise RuntimeError("FREE_HISTORY_LIMIT must be an integer") from error
 
+try:
+    _trial_duration_days = int(os.getenv("TRIAL_DURATION_DAYS", "7"))
+except ValueError as error:
+    raise RuntimeError("TRIAL_DURATION_DAYS must be an integer") from error
+
+try:
+    _trial_history_limit = int(os.getenv("TRIAL_HISTORY_LIMIT", "25"))
+except ValueError as error:
+    raise RuntimeError("TRIAL_HISTORY_LIMIT must be an integer") from error
+
 if _free_history_limit < 1:
     raise RuntimeError("FREE_HISTORY_LIMIT must be positive")
+if _trial_duration_days < 1:
+    raise RuntimeError("TRIAL_DURATION_DAYS must be positive")
+if _trial_history_limit < 1:
+    raise RuntimeError("TRIAL_HISTORY_LIMIT must be positive")
 
 MAX_BOT_TOKEN: str = _max_bot_token
 MAX_API_URL = "https://platform-api2.max.ru"
@@ -45,3 +59,5 @@ OPENAI_API_KEY: str | None = _openai_api_key
 OPENAI_MODEL: str | None = _openai_model
 
 FREE_HISTORY_LIMIT: int = _free_history_limit
+TRIAL_DURATION_DAYS: int = _trial_duration_days
+TRIAL_HISTORY_LIMIT: int = _trial_history_limit

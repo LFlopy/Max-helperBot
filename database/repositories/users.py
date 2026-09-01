@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,3 +64,14 @@ class UserRepository:
             if user is None:
                 raise
             return user
+
+    async def mark_trial_used(
+        self,
+        user: User,
+        used_at: datetime,
+    ) -> User:
+        if used_at.tzinfo is None:
+            raise ValueError("used_at must be timezone-aware")
+        user.trial_used_at = used_at
+        await self.session.flush()
+        return user

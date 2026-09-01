@@ -51,6 +51,12 @@ class UserRepository:
         )
         return list(result.scalars())
 
+    async def list_all_max_user_ids(self) -> list[int]:
+        result = await self.session.execute(
+            select(User.max_user_id).order_by(User.id)
+        )
+        return list(result.scalars())
+
     async def create(
         self,
         max_user_id: int,

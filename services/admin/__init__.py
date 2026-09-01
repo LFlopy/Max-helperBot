@@ -1,3 +1,8 @@
+from services.admin.broadcasts import (
+    AdminBroadcastService,
+    BroadcastResult,
+    BroadcastSender,
+)
 from services.admin.statistics import AdminStatistics, AdminStatisticsService
 from services.admin.subscriptions import (
     ActiveSubscriptionPage,
@@ -15,6 +20,7 @@ from services.admin.users import (
 )
 
 __all__ = [
+    "AdminBroadcastService",
     "ActiveSubscriptionPage",
     "ActiveSubscriptionSummary",
     "AdminSubscriptionOverview",
@@ -27,4 +33,6 @@ __all__ = [
     "AdminUserSummary",
     "AdminTariff",
     "AdminTariffUnavailableError",
+    "BroadcastResult",
+    "BroadcastSender",
 ]

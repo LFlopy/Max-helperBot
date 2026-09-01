@@ -6,12 +6,14 @@ from max_client import MaxBot
 Handler = Callable[[MaxBot, dict], Awaitable[None]]
 StateHandler = Callable[[MaxBot, dict, str], Awaitable[None]]
 RouteMap = Mapping[str, Handler | StateHandler]
+CallbackRouteMap = Mapping[str, Handler]
 
 
 class Router:
     def __init__(self) -> None:
         self.message_handlers: dict[str, Handler] = {}
         self.callback_handlers: dict[str, Handler] = {}
+        self.callback_prefix_handlers: dict[str, Handler] = {}
         self.state_handlers: dict[str, StateHandler] = {}
 
     def message(self, command: str):
@@ -24,6 +26,13 @@ class Router:
     def callback(self, payload: str):
         def decorator(handler: Handler) -> Handler:
             self.callback_handlers[payload] = handler
+            return handler
+
+        return decorator
+
+    def callback_prefix(self, payload_prefix: str):
+        def decorator(handler: Handler) -> Handler:
+            self.callback_prefix_handlers[payload_prefix] = handler
             return handler
 
         return decorator

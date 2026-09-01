@@ -1,6 +1,13 @@
 from max_client import MaxBot
-from bot.router import Handler, Router, RouteMap, StateHandler
+from bot.router import (
+    CallbackRouteMap,
+    Handler,
+    Router,
+    RouteMap,
+    StateHandler,
+)
 from bot.states.fsm import fsm
+from config import ADMIN_IDS
 
 
 class Dispatcher:
@@ -8,6 +15,7 @@ class Dispatcher:
         self.routers: list[Router] = []
         self.message_handlers: dict[str, Handler] = {}
         self.callback_handlers: dict[str, Handler] = {}
+        self.callback_prefix_handlers: dict[str, Handler] = {}
         self.state_handlers: dict[str, StateHandler] = {}
 
     def include_router(self, router: Router) -> None:
@@ -22,6 +30,11 @@ class Dispatcher:
             handler_type="callback",
         )
         self._ensure_unique_routes(
+            source=router.callback_prefix_handlers,
+            target=self.callback_prefix_handlers,
+            handler_type="callback prefix",
+        )
+        self._ensure_unique_routes(
             source=router.state_handlers,
             target=self.state_handlers,
             handler_type="state",
@@ -30,6 +43,7 @@ class Dispatcher:
         self.routers.append(router)
         self.message_handlers.update(router.message_handlers)
         self.callback_handlers.update(router.callback_handlers)
+        self.callback_prefix_handlers.update(router.callback_prefix_handlers)
         self.state_handlers.update(router.state_handlers)
 
     def include_routers(self, *routers: Router) -> None:
@@ -80,6 +94,8 @@ class Dispatcher:
         user_id = int(sender.get("user_id", 0))
 
         if text and text.startswith("/"):
+            if text == "/admin" and user_id not in ADMIN_IDS:
+                return
             handler = self.message_handlers.get(text)
 
             if handler is not None:
@@ -91,6 +107,9 @@ class Dispatcher:
         state = await fsm.get_state(user_id)
 
         if state is not None:
+            if state.startswith("admin:") and user_id not in ADMIN_IDS:
+                await fsm.clear(user_id)
+                return
             state_namespace = state.split(
                 ":",
                 1,
@@ -129,7 +148,41 @@ class Dispatcher:
         if not payload:
             return
 
+        if payload.startswith("admin:") and not self._is_admin_callback(
+            callback
+        ):
+            return
+
         handler = self.callback_handlers.get(payload)
+        if handler is None:
+            handler = self._find_prefix_handler(
+                payload,
+                self.callback_prefix_handlers,
+            )
         if handler is not None:
             await handler(bot, update)
             return
+
+    @staticmethod
+    def _find_prefix_handler(
+        payload: str,
+        handlers: CallbackRouteMap,
+    ) -> Handler | None:
+        matching_prefixes = [
+            prefix for prefix in handlers if payload.startswith(prefix)
+        ]
+        if not matching_prefixes:
+            return None
+        prefix = max(matching_prefixes, key=len)
+        return handlers[prefix]
+
+    @staticmethod
+    def _is_admin_callback(callback: dict) -> bool:
+        user = callback.get("user", callback.get("sender", {}))
+        if not isinstance(user, dict):
+            return False
+        try:
+            user_id = int(user.get("user_id", 0))
+        except (TypeError, ValueError):
+            return False
+        return user_id in ADMIN_IDS

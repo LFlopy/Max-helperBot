@@ -1,3 +1,10 @@
+from services.admin.statistics import AdminStatistics, AdminStatisticsService
+from services.admin.subscriptions import (
+    ActiveSubscriptionPage,
+    ActiveSubscriptionSummary,
+    AdminSubscriptionOverview,
+    AdminSubscriptionService,
+)
 from services.admin.users import (
     AdminTariff,
     AdminTariffUnavailableError,
@@ -12,6 +19,8 @@ __all__ = [
     "ActiveSubscriptionSummary",
     "AdminSubscriptionOverview",
     "AdminSubscriptionService",
+    "AdminStatistics",
+    "AdminStatisticsService",
     "AdminUserCard",
     "AdminUserPage",
     "AdminUserService",
@@ -19,9 +28,3 @@ __all__ = [
     "AdminTariff",
     "AdminTariffUnavailableError",
 ]
-from services.admin.subscriptions import (
-    ActiveSubscriptionPage,
-    ActiveSubscriptionSummary,
-    AdminSubscriptionOverview,
-    AdminSubscriptionService,
-)

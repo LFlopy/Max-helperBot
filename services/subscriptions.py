@@ -144,6 +144,40 @@ class SubscriptionService:
 
         return subscription
 
+    async def cancel_paid_subscription(
+        self,
+        user_id: int,
+        now: datetime | None = None,
+    ) -> bool:
+        current_time = now or datetime.now(timezone.utc)
+        if current_time.tzinfo is None:
+            raise ValueError("now must be timezone-aware")
+
+        try:
+            user = await self.users.get_by_id(user_id, for_update=True)
+            if user is None:
+                raise ValueError("User not found")
+            active = await self.subscriptions.get_active_by_user(
+                user_id,
+                now=current_time,
+                for_update=True,
+            )
+            if active is None:
+                await self.session.commit()
+                return False
+
+            await self.subscriptions.update_period(
+                active,
+                tariff_id=active.tariff_id,
+                expires_at=current_time,
+                commit=False,
+            )
+            await self.session.commit()
+            return True
+        except Exception:
+            await self.session.rollback()
+            raise
+
     async def get_user_access(
         self,
         user_id: int,

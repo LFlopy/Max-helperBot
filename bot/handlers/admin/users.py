@@ -1,10 +1,22 @@
 from datetime import datetime
 
-from bot.keyboards.admin.users import user_card_keyboard, users_keyboard
+from bot.keyboards.admin.users import (
+    cancel_confirmation_keyboard,
+    grant_confirmation_keyboard,
+    subscription_management_keyboard,
+    tariff_selection_keyboard,
+    user_card_keyboard,
+    users_keyboard,
+)
 from bot.router import Router
 from database.session import session_factory
 from max_client import MaxBot
-from services.admin import AdminUserCard, AdminUserPage, AdminUserService
+from services.admin import (
+    AdminTariffUnavailableError,
+    AdminUserCard,
+    AdminUserPage,
+    AdminUserService,
+)
 from services.subscriptions import AccessType
 
 
@@ -96,6 +108,29 @@ async def _show_users(
     )
 
 
+async def _show_user_card(
+    bot: MaxBot,
+    callback_id: str,
+    user_id: int,
+    return_page: int,
+) -> None:
+    async with session_factory() as session:
+        card = await AdminUserService(session).get_user_card(user_id)
+    if card is None:
+        await bot.answer_callback(
+            callback_id=callback_id,
+            message={"text": "Пользователь не найден."},
+        )
+        return
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": _card_text(card),
+            "attachments": [user_card_keyboard(card, return_page)],
+        },
+    )
+
+
 @router.callback("admin:users")
 async def handle_users(bot: MaxBot, update: dict) -> None:
     context = _callback(update)
@@ -131,26 +166,115 @@ async def handle_user_card(bot: MaxBot, update: dict) -> None:
     if not isinstance(payload, str):
         return
     parts = payload.split(":")
-    if len(parts) != 5 or parts[3] != "page":
-        return
     try:
         user_id = int(parts[2])
-        return_page = max(1, int(parts[4]))
-    except ValueError:
+        return_page = max(1, int(parts[-1]))
+    except (IndexError, ValueError):
         return
 
-    async with session_factory() as session:
-        card = await AdminUserService(session).get_user_card(user_id)
-    if card is None:
+    if len(parts) == 5 and parts[3] == "page":
+        await _show_user_card(bot, callback_id, user_id, return_page)
+        return
+
+    if len(parts) == 6 and parts[3:5] == ["subscriptions", "page"]:
         await bot.answer_callback(
             callback_id=callback_id,
-            message={"text": "Пользователь не найден."},
+            message={
+                "text": "Управление подпиской",
+                "attachments": [
+                    subscription_management_keyboard(user_id, return_page)
+                ],
+            },
         )
         return
-    await bot.answer_callback(
-        callback_id=callback_id,
-        message={
-            "text": _card_text(card),
-            "attachments": [user_card_keyboard(card, return_page)],
-        },
-    )
+
+    if len(parts) == 6 and parts[3:5] == ["grant", "page"]:
+        async with session_factory() as session:
+            tariffs = await AdminUserService(session).list_active_tariffs()
+        await bot.answer_callback(
+            callback_id=callback_id,
+            message={
+                "text": "Выберите активный тариф",
+                "attachments": [
+                    tariff_selection_keyboard(user_id, tariffs, return_page)
+                ],
+            },
+        )
+        return
+
+    if len(parts) == 8 and parts[3:5] == ["grant", "tariff"]:
+        try:
+            tariff_id = int(parts[5])
+        except ValueError:
+            return
+        async with session_factory() as session:
+            tariffs = await AdminUserService(session).list_active_tariffs()
+        tariff = next((item for item in tariffs if item.id == tariff_id), None)
+        if tariff is None:
+            await bot.answer_callback(
+                callback_id=callback_id,
+                message={"text": "Тариф больше недоступен."},
+            )
+            return
+        await bot.answer_callback(
+            callback_id=callback_id,
+            message={
+                "text": (
+                    f'Выдать пользователю тариф "{tariff.name}" '
+                    f"на {tariff.duration_days} дней?"
+                ),
+                "attachments": [
+                    grant_confirmation_keyboard(
+                        user_id,
+                        tariff.id,
+                        return_page,
+                    )
+                ],
+            },
+        )
+        return
+
+    if (
+        len(parts) == 9
+        and parts[3:5] == ["grant", "tariff"]
+        and parts[6:8] == ["confirm", "page"]
+    ):
+        try:
+            tariff_id = int(parts[5])
+        except ValueError:
+            return
+        try:
+            async with session_factory() as session:
+                await AdminUserService(session).grant_subscription(
+                    user_id,
+                    tariff_id,
+                )
+        except AdminTariffUnavailableError:
+            await bot.answer_callback(
+                callback_id=callback_id,
+                message={"text": "Тариф больше недоступен."},
+            )
+            return
+        await _show_user_card(bot, callback_id, user_id, return_page)
+        return
+
+    if len(parts) == 6 and parts[3:5] == ["cancel", "page"]:
+        await bot.answer_callback(
+            callback_id=callback_id,
+            message={
+                "text": "Отменить активную подписку пользователя?",
+                "attachments": [
+                    cancel_confirmation_keyboard(user_id, return_page)
+                ],
+            },
+        )
+        return
+
+    if (
+        len(parts) == 7
+        and parts[3:5] == ["cancel", "confirm"]
+        and parts[5] == "page"
+    ):
+        async with session_factory() as session:
+            await AdminUserService(session).cancel_subscription(user_id)
+        await _show_user_card(bot, callback_id, user_id, return_page)

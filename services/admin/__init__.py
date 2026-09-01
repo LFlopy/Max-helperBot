@@ -1,4 +1,6 @@
 from services.admin.users import (
+    AdminTariff,
+    AdminTariffUnavailableError,
     AdminUserCard,
     AdminUserPage,
     AdminUserService,
@@ -10,4 +12,6 @@ __all__ = [
     "AdminUserPage",
     "AdminUserService",
     "AdminUserSummary",
+    "AdminTariff",
+    "AdminTariffUnavailableError",
 ]

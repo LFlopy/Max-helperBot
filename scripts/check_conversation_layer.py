@@ -1,9 +1,20 @@
 import asyncio
+from collections.abc import Sequence
 from time import time_ns
 
 from database.repositories import MessageRepository, UserRepository
 from database.session import engine, session_factory
 from services import ConsultationService
+from services.ai import AIMessage
+
+
+class FakeAIClient:
+    async def generate(
+        self,
+        system_prompt: str,
+        messages: Sequence[AIMessage],
+    ) -> str:
+        return f"Тестовый ответ для {messages[-1].content}"
 
 
 async def cleanup(max_user_id: int) -> None:
@@ -25,7 +36,7 @@ async def main() -> None:
 
     try:
         async with session_factory() as session:
-            service = ConsultationService(session)
+            service = ConsultationService(session, ai_client=FakeAIClient())
             first_response = await service.process_message(
                 max_user_id=max_user_id,
                 content="Первый вопрос",

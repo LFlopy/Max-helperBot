@@ -1,14 +1,17 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from database.models import Payment, PaymentStatus
 from database.repositories import (
     PaymentRepository,
     TariffRepository,
     UserRepository,
 )
-from services.payments.models import PaymentRequest
+from services.payments.models import PaymentConfirmation, PaymentRequest
 from services.payments.provider import PaymentProvider
+from services.subscriptions import SubscriptionService
 
 
 class PaymentServiceError(Exception):
@@ -20,6 +23,14 @@ class PaymentUserNotFoundError(PaymentServiceError):
 
 
 class TariffUnavailableError(PaymentServiceError):
+    pass
+
+
+class PaymentNotFoundError(PaymentServiceError):
+    pass
+
+
+class PaymentStateError(PaymentServiceError):
     pass
 
 
@@ -90,3 +101,47 @@ class PaymentService:
             provider_payment_id=payment.provider_payment_id,
             checkout_url=created.checkout_url,
         )
+
+    async def process_successful_confirmation(
+        self,
+        confirmation: PaymentConfirmation,
+    ) -> Payment:
+        if confirmation.status is not PaymentStatus.PAID:
+            raise PaymentStateError("Confirmation is not successful")
+
+        paid_at = confirmation.paid_at or datetime.now(timezone.utc)
+        if paid_at.tzinfo is None:
+            raise PaymentStateError("paid_at must be timezone-aware")
+
+        try:
+            payment = await self.payments.get_by_provider_payment_id(
+                provider=self.provider.name,
+                provider_payment_id=confirmation.provider_payment_id,
+                for_update=True,
+            )
+            if payment is None:
+                raise PaymentNotFoundError("Payment not found")
+            if payment.status is PaymentStatus.PAID:
+                await self.session.commit()
+                return payment
+            if payment.status is not PaymentStatus.PENDING:
+                raise PaymentStateError(
+                    f"Payment cannot be paid from status {payment.status.value}"
+                )
+
+            await SubscriptionService(
+                self.session,
+                free_history_limit=1,
+            ).grant_paid_subscription(
+                user_id=payment.user_id,
+                tariff_id=payment.tariff_id,
+                now=paid_at,
+                commit=False,
+            )
+            await self.payments.mark_paid(payment, paid_at=paid_at)
+            await self.session.commit()
+            await self.session.refresh(payment)
+            return payment
+        except Exception:
+            await self.session.rollback()
+            raise

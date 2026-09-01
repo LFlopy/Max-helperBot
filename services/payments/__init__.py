@@ -7,8 +7,10 @@ from services.payments.models import (
 from services.payments.provider import PaymentProvider
 from services.payments.service import (
     PaymentCheckout,
+    PaymentNotFoundError,
     PaymentService,
     PaymentServiceError,
+    PaymentStateError,
     PaymentUserNotFoundError,
     TariffUnavailableError,
 )
@@ -20,8 +22,10 @@ __all__ = [
     "PaymentProvider",
     "PaymentRequest",
     "PaymentCheckout",
+    "PaymentNotFoundError",
     "PaymentService",
     "PaymentServiceError",
+    "PaymentStateError",
     "PaymentUserNotFoundError",
     "TariffUnavailableError",
 ]

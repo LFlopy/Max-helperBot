@@ -6,6 +6,11 @@ from bot.handlers import ROUTERS
 from config import MAX_BOT_TOKEN, WEBHOOK_SECRET
 from max_client import MaxBot
 from bot.dispatcher import Dispatcher
+from database.session import engine
+
+
+async def close_database(_app: web.Application) -> None:
+    await engine.dispose()
 
 
 async def webhook_handler(request: web.Request):
@@ -38,6 +43,7 @@ async def main():
 
     app["bot"] = bot
     app["dispatcher"] = dispatcher
+    app.on_cleanup.append(close_database)
 
     app.router.add_post(
         "/max-helper/webhook",

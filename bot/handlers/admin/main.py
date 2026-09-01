@@ -1,6 +1,6 @@
 from bot.keyboards.admin.main import admin_main_keyboard
 from bot.router import Router
-from config import ADMIN_IDS
+from bot.states.fsm import fsm
 from max_client import MaxBot
 
 
@@ -11,9 +11,7 @@ async def show_admin(
     bot: MaxBot,
     user_id: int,
 ) -> None:
-    if user_id not in ADMIN_IDS:
-        return
-
+    await fsm.clear(user_id)
     await bot.send_message(
         user_id=user_id,
         text="Админ панель",
@@ -29,7 +27,7 @@ async def admin_handle_admin(
     update: dict,
 ) -> None:
     message = update["message"]
-    user_id = message["sender"]["user_id"]
+    user_id = int(message["sender"]["user_id"])
 
     await show_admin(
         bot=bot,

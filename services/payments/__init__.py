@@ -5,6 +5,13 @@ from services.payments.models import (
     PaymentRequest,
 )
 from services.payments.provider import PaymentProvider
+from services.payments.service import (
+    PaymentCheckout,
+    PaymentService,
+    PaymentServiceError,
+    PaymentUserNotFoundError,
+    TariffUnavailableError,
+)
 
 __all__ = [
     "CreatedPayment",
@@ -12,4 +19,9 @@ __all__ = [
     "PaymentConfirmation",
     "PaymentProvider",
     "PaymentRequest",
+    "PaymentCheckout",
+    "PaymentService",
+    "PaymentServiceError",
+    "PaymentUserNotFoundError",
+    "TariffUnavailableError",
 ]

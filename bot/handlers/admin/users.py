@@ -1,0 +1,156 @@
+from datetime import datetime
+
+from bot.keyboards.admin.users import user_card_keyboard, users_keyboard
+from bot.router import Router
+from database.session import session_factory
+from max_client import MaxBot
+from services.admin import AdminUserCard, AdminUserPage, AdminUserService
+from services.subscriptions import AccessType
+
+
+router = Router()
+
+
+def _callback(update: dict) -> tuple[dict, str] | None:
+    callback = update.get("callback", {})
+    callback_id = callback.get("callback_id")
+    if not isinstance(callback_id, str) or not callback_id:
+        return None
+    return callback, callback_id
+
+
+def _date(value: datetime | None) -> str:
+    if value is None:
+        return "—"
+    return value.strftime("%d.%m.%Y")
+
+
+def _access_name(
+    access_type: AccessType,
+    tariff_name: str | None,
+) -> str:
+    if access_type is AccessType.PAID:
+        return tariff_name or "Paid"
+    if access_type is AccessType.TRIAL:
+        return "Trial"
+    return "Free"
+
+
+def _users_text(page: AdminUserPage) -> str:
+    lines = ["Пользователи", ""]
+    if not page.items:
+        lines.append("Пользователей пока нет.")
+        return "\n".join(lines)
+
+    for index, item in enumerate(page.items, start=1):
+        lines.extend(
+            [
+                f"{index}. {item.first_name or 'Без имени'}",
+                f"MAX ID: {item.max_user_id}",
+                f"Внутренний ID: {item.id}",
+                f"Доступ: {_access_name(item.access_type, item.tariff_name)}",
+                f"До: {_date(item.access_expires_at)}",
+                "",
+            ]
+        )
+    return "\n".join(lines).rstrip()
+
+
+def _card_text(card: AdminUserCard) -> str:
+    trial_status = (
+        f"использован {_date(card.trial_used_at)}"
+        if card.trial_used_at is not None
+        else "не использован"
+    )
+    return "\n".join(
+        [
+            "Пользователь",
+            "",
+            f"Имя: {card.first_name or 'Без имени'}",
+            f"MAX ID: {card.max_user_id}",
+            f"Внутренний ID: {card.id}",
+            f"Дата регистрации: {_date(card.created_at)}",
+            "",
+            f"Доступ: {card.access_type.value}",
+            f"Тариф: {card.tariff_name or '—'}",
+            f"Доступ до: {_date(card.access_expires_at)}",
+            "",
+            f"Trial: {trial_status}",
+        ]
+    )
+
+
+async def _show_users(
+    bot: MaxBot,
+    callback_id: str,
+    page_number: int,
+) -> None:
+    async with session_factory() as session:
+        page = await AdminUserService(session).list_users(page=page_number)
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": _users_text(page),
+            "attachments": [users_keyboard(page)],
+        },
+    )
+
+
+@router.callback("admin:users")
+async def handle_users(bot: MaxBot, update: dict) -> None:
+    context = _callback(update)
+    if context is None:
+        return
+    _, callback_id = context
+    await _show_users(bot, callback_id, page_number=1)
+
+
+@router.callback_prefix("admin:users:page:")
+async def handle_users_page(bot: MaxBot, update: dict) -> None:
+    context = _callback(update)
+    if context is None:
+        return
+    callback, callback_id = context
+    payload = callback.get("payload")
+    if not isinstance(payload, str):
+        return
+    try:
+        page_number = int(payload.rsplit(":", 1)[1])
+    except (IndexError, ValueError):
+        return
+    await _show_users(bot, callback_id, page_number=max(1, page_number))
+
+
+@router.callback_prefix("admin:user:")
+async def handle_user_card(bot: MaxBot, update: dict) -> None:
+    context = _callback(update)
+    if context is None:
+        return
+    callback, callback_id = context
+    payload = callback.get("payload")
+    if not isinstance(payload, str):
+        return
+    parts = payload.split(":")
+    if len(parts) != 5 or parts[3] != "page":
+        return
+    try:
+        user_id = int(parts[2])
+        return_page = max(1, int(parts[4]))
+    except ValueError:
+        return
+
+    async with session_factory() as session:
+        card = await AdminUserService(session).get_user_card(user_id)
+    if card is None:
+        await bot.answer_callback(
+            callback_id=callback_id,
+            message={"text": "Пользователь не найден."},
+        )
+        return
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": _card_text(card),
+            "attachments": [user_card_keyboard(card, return_page)],
+        },
+    )

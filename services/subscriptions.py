@@ -26,6 +26,7 @@ class UserAccess:
     access_type: AccessType = AccessType.FREE
     tariff_code: str | None = None
     tariff_name: str | None = None
+    expires_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,6 +172,8 @@ class SubscriptionService:
                     has_active_subscription=False,
                     history_limit=self.trial_history_limit,
                     access_type=AccessType.TRIAL,
+                    expires_at=user.trial_used_at
+                    + timedelta(days=self.trial_duration_days),
                 )
             return UserAccess(
                 has_active_subscription=False,
@@ -187,4 +190,5 @@ class SubscriptionService:
             access_type=AccessType.PAID,
             tariff_code=tariff.code,
             tariff_name=tariff.name,
+            expires_at=subscription.expires_at,
         )

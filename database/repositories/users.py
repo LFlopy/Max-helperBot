@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +28,28 @@ class UserRepository:
             select(User).where(User.max_user_id == max_user_id)
         )
         return result.scalar_one_or_none()
+
+    async def count(self) -> int:
+        result = await self.session.execute(select(func.count(User.id)))
+        return result.scalar_one()
+
+    async def list_page(
+        self,
+        offset: int,
+        limit: int,
+    ) -> list[User]:
+        if offset < 0:
+            raise ValueError("offset must not be negative")
+        if limit < 1:
+            raise ValueError("limit must be positive")
+
+        result = await self.session.execute(
+            select(User)
+            .order_by(User.created_at.desc(), User.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        return list(result.scalars())
 
     async def create(
         self,

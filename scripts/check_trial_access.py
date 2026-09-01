@@ -77,9 +77,10 @@ async def main() -> None:
                 duration_days=30,
                 history_limit=50,
             )
+            tariff_id = tariff.id
             await SubscriptionRepository(session).create(
                 user_id=user_id,
-                tariff_id=tariff.id,
+                tariff_id=tariff_id,
                 starts_at=now,
                 expires_at=now + timedelta(days=30),
             )

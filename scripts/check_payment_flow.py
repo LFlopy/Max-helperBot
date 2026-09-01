@@ -71,6 +71,9 @@ async def main() -> None:
                 duration_days=30,
                 history_limit=41,
             )
+            active_tariff_id = active_tariff.id
+            active_tariff_code = active_tariff.code
+            active_tariff_price = active_tariff.price
             await tariffs.upsert(
                 code=tariff_codes[1],
                 name="Inactive check",
@@ -79,15 +82,15 @@ async def main() -> None:
                 history_limit=1,
                 is_active=False,
             )
-            users_by_max_id = {
-                max_user_id: await users.get_or_create(max_user_id)
-                for max_user_id in max_user_ids
-            }
+            user_ids_by_max_id: dict[int, int] = {}
+            for max_user_id in max_user_ids:
+                user = await users.get_or_create(max_user_id)
+                user_ids_by_max_id[max_user_id] = user.id
 
             service = PaymentService(session, provider)
             checkout = await service.create_payment(
                 max_user_id=max_user_ids[0],
-                tariff_code=active_tariff.code,
+                tariff_code=active_tariff_code,
             )
             payment = await PaymentRepository(session).get_by_id(checkout.payment_id)
             assert payment is not None
@@ -96,7 +99,7 @@ async def main() -> None:
             assert payment.status is PaymentStatus.PENDING
             assert payment.provider_payment_id == checkout.provider_payment_id
             assert checkout.checkout_url.endswith(checkout.provider_payment_id)
-            assert provider.requests[-1].amount == active_tariff.price
+            assert provider.requests[-1].amount == active_tariff_price
 
             try:
                 await service.create_payment(
@@ -113,19 +116,21 @@ async def main() -> None:
                 status=PaymentStatus.PAID,
                 paid_at=now,
             )
-            await service.process_successful_confirmation(confirmation)
+            paid_payment = await service.process_successful_confirmation(
+                confirmation
+            )
             subscription = await SubscriptionRepository(session).get_active_by_user(
-                users_by_max_id[max_user_ids[0]].id,
+                user_ids_by_max_id[max_user_ids[0]],
                 now=now,
             )
             assert subscription is not None
             first_expiry = subscription.expires_at
-            assert payment.status is PaymentStatus.PAID
-            assert payment.paid_at == now
+            assert paid_payment.status is PaymentStatus.PAID
+            assert paid_payment.paid_at == now
             access = await SubscriptionService(
                 session,
                 free_history_limit=3,
-            ).get_user_access(users_by_max_id[max_user_ids[0]].id, now=now)
+            ).get_user_access(user_ids_by_max_id[max_user_ids[0]], now=now)
             assert access.access_type is AccessType.PAID
 
             await service.process_successful_confirmation(confirmation)
@@ -134,7 +139,7 @@ async def main() -> None:
 
             renewal = await service.create_payment(
                 max_user_id=max_user_ids[0],
-                tariff_code=active_tariff.code,
+                tariff_code=active_tariff_code,
             )
             await service.process_successful_confirmation(
                 PaymentConfirmation(
@@ -146,16 +151,16 @@ async def main() -> None:
             await session.refresh(subscription)
             assert subscription.expires_at == first_expiry + timedelta(days=30)
 
-            expired_user = users_by_max_id[max_user_ids[1]]
+            expired_user_id = user_ids_by_max_id[max_user_ids[1]]
             await SubscriptionRepository(session).create(
-                user_id=expired_user.id,
-                tariff_id=active_tariff.id,
+                user_id=expired_user_id,
+                tariff_id=active_tariff_id,
                 starts_at=now - timedelta(days=2),
                 expires_at=now - timedelta(days=1),
             )
             expired_checkout = await service.create_payment(
                 max_user_id=max_user_ids[1],
-                tariff_code=active_tariff.code,
+                tariff_code=active_tariff_code,
             )
             expired_paid_at = now + timedelta(seconds=2)
             await service.process_successful_confirmation(
@@ -167,13 +172,13 @@ async def main() -> None:
             )
             new_subscription = await SubscriptionRepository(
                 session
-            ).get_active_by_user(expired_user.id, now=expired_paid_at)
+            ).get_active_by_user(expired_user_id, now=expired_paid_at)
             assert new_subscription is not None
             assert new_subscription.starts_at == expired_paid_at
 
             rollback_checkout = await service.create_payment(
                 max_user_id=max_user_ids[2],
-                tariff_code=active_tariff.code,
+                tariff_code=active_tariff_code,
             )
             original_grant = SubscriptionService.grant_paid_subscription
 
@@ -224,7 +229,7 @@ async def main() -> None:
             rollback_subscription = await SubscriptionRepository(
                 verification_session
             ).get_active_by_user(
-                users_by_max_id[max_user_ids[2]].id,
+                user_ids_by_max_id[max_user_ids[2]],
                 now=now + timedelta(seconds=3),
             )
             assert rollback_subscription is None

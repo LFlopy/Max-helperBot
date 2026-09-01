@@ -16,6 +16,10 @@ _admin_ids = os.getenv("ADMIN_IDS")
 if not _admin_ids:
     raise RuntimeError("ADMIN_IDS is not set")
 
+_database_url = os.getenv("DATABASE_URL")
+if not _database_url:
+    raise RuntimeError("DATABASE_URL is not set")
+
 MAX_BOT_TOKEN: str = _max_bot_token
 MAX_API_URL = "https://platform-api2.max.ru"
 
@@ -23,3 +27,5 @@ WEBHOOK_SECRET: str = _webhook_secret
 WEBHOOK_URL: str = "https://ovchuntonova.ru/max-helper/webhook"
 
 ADMIN_IDS = {int(user_id) for user_id in _admin_ids.split() if user_id.strip()}
+
+DATABASE_URL: str = _database_url

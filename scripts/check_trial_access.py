@@ -38,6 +38,7 @@ async def main() -> None:
     try:
         async with session_factory() as session:
             user = await UserRepository(session).get_or_create(max_user_id)
+            user_id = user.id
             service = SubscriptionService(
                 session,
                 free_history_limit=3,
@@ -45,22 +46,25 @@ async def main() -> None:
                 trial_history_limit=17,
             )
 
-            trial = await service.activate_trial(user.id, now=now)
+            trial = await service.activate_trial(user_id, now=now)
             assert trial.starts_at == now
             assert trial.expires_at == now + timedelta(days=7)
-            access = await service.get_user_access(user.id, now=now)
+            access = await service.get_user_access(user_id, now=now)
             assert access.access_type is AccessType.TRIAL
             assert access.history_limit == 17
 
             try:
-                await service.activate_trial(user.id, now=now + timedelta(days=8))
+                await service.activate_trial(
+                    user_id,
+                    now=now + timedelta(days=8),
+                )
             except TrialAlreadyUsedError:
                 pass
             else:
                 raise AssertionError("Trial was activated twice")
 
             expired_access = await service.get_user_access(
-                user.id,
+                user_id,
                 now=now + timedelta(days=8),
             )
             assert expired_access.access_type is AccessType.FREE
@@ -74,12 +78,12 @@ async def main() -> None:
                 history_limit=50,
             )
             await SubscriptionRepository(session).create(
-                user_id=user.id,
+                user_id=user_id,
                 tariff_id=tariff.id,
                 starts_at=now,
                 expires_at=now + timedelta(days=30),
             )
-            paid_access = await service.get_user_access(user.id, now=now)
+            paid_access = await service.get_user_access(user_id, now=now)
             assert paid_access.access_type is AccessType.PAID
             assert paid_access.history_limit == 50
     finally:

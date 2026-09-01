@@ -1,9 +1,19 @@
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import Message
 from database.repositories import MessageRepository, UserRepository
-from services.ai import AIClient, AIMessage, get_ai_client
+from services.ai import AIClient, AIClientError, AIMessage, get_ai_client
 from services.prompts import CONSULTATION_SYSTEM_PROMPT
+
+
+logger = logging.getLogger(__name__)
+
+AI_UNAVAILABLE_MESSAGE = (
+    "Сейчас не получается подготовить ответ. "
+    "Попробуй отправить сообщение немного позже."
+)
 
 
 class ConsultationService:
@@ -49,10 +59,17 @@ class ConsultationService:
             ),
             *self._to_ai_messages(history),
         ]
-        response = await self.ai_client.generate(
-            system_prompt=CONSULTATION_SYSTEM_PROMPT,
-            messages=context,
-        )
+        try:
+            response = await self.ai_client.generate(
+                system_prompt=CONSULTATION_SYSTEM_PROMPT,
+                messages=context,
+            )
+        except AIClientError:
+            logger.exception(
+                "AI consultation request failed",
+                extra={"max_user_id": max_user_id},
+            )
+            return AI_UNAVAILABLE_MESSAGE
 
         await self.messages.create(
             user_id=user.id,

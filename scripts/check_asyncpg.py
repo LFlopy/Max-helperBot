@@ -1,0 +1,26 @@
+import asyncio
+import asyncpg
+
+from config import DATABASE_URL
+
+
+async def main() -> None:
+    url = DATABASE_URL.replace(
+        "postgresql+asyncpg://",
+        "postgresql://",
+    )
+
+    connection = await asyncpg.connect(
+        url,
+        timeout=10,
+    )
+
+    result = await connection.fetchval("SELECT 1")
+
+    print(result)
+
+    await connection.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

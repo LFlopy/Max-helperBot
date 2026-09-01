@@ -9,8 +9,17 @@ class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_id(self, user_id: int) -> User | None:
-        return await self.session.get(User, user_id)
+    async def get_by_id(
+        self,
+        user_id: int,
+        *,
+        for_update: bool = False,
+    ) -> User | None:
+        return await self.session.get(
+            User,
+            user_id,
+            with_for_update=for_update,
+        )
 
     async def get_by_max_user_id(self, max_user_id: int) -> User | None:
         result = await self.session.execute(

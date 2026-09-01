@@ -1,14 +1,10 @@
 import argparse
 import asyncio
-from datetime import datetime, timedelta, timezone
 
 from database.models import User
-from database.repositories import (
-    SubscriptionRepository,
-    TariffRepository,
-    UserRepository,
-)
+from database.repositories import TariffRepository, UserRepository
 from database.session import engine, session_factory
+from services import SubscriptionService
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,7 +30,6 @@ async def grant(args: argparse.Namespace) -> None:
         async with session_factory() as session:
             users = UserRepository(session)
             tariffs = TariffRepository(session)
-            subscriptions = SubscriptionRepository(session)
 
             user = await resolve_user(users, args)
             if user is None:
@@ -44,12 +39,12 @@ async def grant(args: argparse.Namespace) -> None:
             if tariff is None:
                 raise ValueError("Tariff not found")
 
-            starts_at = datetime.now(timezone.utc)
-            subscription = await subscriptions.create(
+            subscription = await SubscriptionService(
+                session,
+                free_history_limit=1,
+            ).grant_paid_subscription(
                 user_id=user.id,
                 tariff_id=tariff.id,
-                starts_at=starts_at,
-                expires_at=starts_at + timedelta(days=tariff.duration_days),
             )
     finally:
         await engine.dispose()

@@ -7,10 +7,15 @@ from config import MAX_BOT_TOKEN, WEBHOOK_SECRET
 from max_client import MaxBot
 from bot.dispatcher import Dispatcher
 from database.session import engine
+from services.ai import configure_ai_client, shutdown_ai_client
 
 
 async def close_database(_app: web.Application) -> None:
     await engine.dispose()
+
+
+async def close_ai_client(_app: web.Application) -> None:
+    await shutdown_ai_client()
 
 
 async def webhook_handler(request: web.Request):
@@ -33,6 +38,8 @@ async def webhook_handler(request: web.Request):
 
 
 async def main():
+    configure_ai_client()
+
     bot = MaxBot(MAX_BOT_TOKEN)
     await bot.start()
 
@@ -43,6 +50,7 @@ async def main():
 
     app["bot"] = bot
     app["dispatcher"] = dispatcher
+    app.on_cleanup.append(close_ai_client)
     app.on_cleanup.append(close_database)
 
     app.router.add_post(

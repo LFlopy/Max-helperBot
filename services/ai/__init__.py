@@ -4,6 +4,11 @@ from services.ai.client import (
     OpenAIClient,
 )
 from services.ai.models import AIMessage, AIMessageRole
+from services.ai.provider import (
+    configure_ai_client,
+    get_ai_client,
+    shutdown_ai_client,
+)
 
 __all__ = [
     "AIClient",
@@ -11,4 +16,7 @@ __all__ = [
     "AIMessage",
     "AIMessageRole",
     "OpenAIClient",
+    "configure_ai_client",
+    "get_ai_client",
+    "shutdown_ai_client",
 ]

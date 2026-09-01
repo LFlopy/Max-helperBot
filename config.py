@@ -20,6 +20,9 @@ _database_url = os.getenv("DATABASE_URL")
 if not _database_url:
     raise RuntimeError("DATABASE_URL is not set")
 
+_openai_api_key = os.getenv("OPENAI_API_KEY")
+_openai_model = os.getenv("OPENAI_MODEL")
+
 MAX_BOT_TOKEN: str = _max_bot_token
 MAX_API_URL = "https://platform-api2.max.ru"
 
@@ -29,3 +32,6 @@ WEBHOOK_URL: str = "https://ovchuntonova.ru/max-helper/webhook"
 ADMIN_IDS = {int(user_id) for user_id in _admin_ids.split() if user_id.strip()}
 
 DATABASE_URL: str = _database_url
+
+OPENAI_API_KEY: str | None = _openai_api_key
+OPENAI_MODEL: str | None = _openai_model

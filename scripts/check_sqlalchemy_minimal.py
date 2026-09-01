@@ -1,6 +1,5 @@
 import asyncio
 
-from psycopg import AsyncClientCursor
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -11,9 +10,6 @@ async def main() -> None:
     engine = create_async_engine(
         DATABASE_URL,
         echo=True,
-        connect_args={
-            "cursor_factory": AsyncClientCursor,
-        },
     )
 
     try:

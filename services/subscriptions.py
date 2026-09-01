@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from enum import StrEnum
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,10 +13,17 @@ from database.repositories import (
 )
 
 
+class AccessType(StrEnum):
+    FREE = "free"
+    TRIAL = "trial"
+    PAID = "paid"
+
+
 @dataclass(frozen=True, slots=True)
 class UserAccess:
     has_active_subscription: bool
     history_limit: int
+    access_type: AccessType = AccessType.FREE
     tariff_code: str | None = None
     tariff_name: str | None = None
 
@@ -135,9 +143,35 @@ class SubscriptionService:
 
         return subscription
 
-    async def get_user_access(self, user_id: int) -> UserAccess:
-        subscription = await self.subscriptions.get_active_by_user(user_id)
+    async def get_user_access(
+        self,
+        user_id: int,
+        now: datetime | None = None,
+    ) -> UserAccess:
+        current_time = now or datetime.now(timezone.utc)
+        if current_time.tzinfo is None:
+            raise ValueError("now must be timezone-aware")
+
+        subscription = await self.subscriptions.get_active_by_user(
+            user_id,
+            now=current_time,
+        )
         if subscription is None:
+            user = await self.users.get_by_id(user_id)
+            if user is None:
+                raise ValueError("User not found")
+            if (
+                user.trial_used_at is not None
+                and user.trial_used_at <= current_time
+                and user.trial_used_at
+                + timedelta(days=self.trial_duration_days)
+                > current_time
+            ):
+                return UserAccess(
+                    has_active_subscription=False,
+                    history_limit=self.trial_history_limit,
+                    access_type=AccessType.TRIAL,
+                )
             return UserAccess(
                 has_active_subscription=False,
                 history_limit=self.free_history_limit,
@@ -150,6 +184,7 @@ class SubscriptionService:
         return UserAccess(
             has_active_subscription=True,
             history_limit=tariff.history_limit,
+            access_type=AccessType.PAID,
             tariff_code=tariff.code,
             tariff_name=tariff.name,
         )

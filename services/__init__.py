@@ -1,6 +1,7 @@
 from services.consultation import ConsultationService
 from services.payments import PaymentService
 from services.subscriptions import (
+    AccessType,
     SubscriptionService,
     TrialAccess,
     TrialAlreadyUsedError,
@@ -8,6 +9,7 @@ from services.subscriptions import (
 )
 
 __all__ = [
+    "AccessType",
     "ConsultationService",
     "PaymentService",
     "SubscriptionService",

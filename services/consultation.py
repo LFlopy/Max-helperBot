@@ -2,10 +2,12 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import FREE_HISTORY_LIMIT
 from database.models import Message
 from database.repositories import MessageRepository, UserRepository
 from services.ai import AIClient, AIClientError, AIMessage, get_ai_client
 from services.prompts import CONSULTATION_SYSTEM_PROMPT
+from services.subscriptions import SubscriptionService
 
 
 logger = logging.getLogger(__name__)
@@ -21,15 +23,15 @@ class ConsultationService:
         self,
         session: AsyncSession,
         ai_client: AIClient | None = None,
-        history_limit: int = 20,
+        free_history_limit: int = FREE_HISTORY_LIMIT,
     ) -> None:
-        if history_limit < 1:
-            raise ValueError("history_limit must be positive")
-
         self.users = UserRepository(session)
         self.messages = MessageRepository(session)
+        self.subscriptions = SubscriptionService(
+            session,
+            free_history_limit=free_history_limit,
+        )
         self.ai_client = ai_client or get_ai_client()
-        self.history_limit = history_limit
 
     async def process_message(
         self,
@@ -47,9 +49,10 @@ class ConsultationService:
             role="user",
             content=content,
         )
+        access = await self.subscriptions.get_user_access(user.id)
         history = await self.messages.get_recent_by_user(
             user_id=user.id,
-            limit=self.history_limit,
+            limit=access.history_limit,
         )
 
         context = [

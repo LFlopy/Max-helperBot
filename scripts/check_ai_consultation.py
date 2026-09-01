@@ -56,7 +56,7 @@ async def main() -> None:
             service = ConsultationService(
                 session,
                 ai_client=ai_client,
-                history_limit=3,
+                free_history_limit=3,
             )
             first_response = await service.process_message(
                 max_user_id=max_user_id,

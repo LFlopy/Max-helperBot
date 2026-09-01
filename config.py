@@ -23,6 +23,14 @@ if not _database_url:
 _openai_api_key = os.getenv("OPENAI_API_KEY")
 _openai_model = os.getenv("OPENAI_MODEL")
 
+try:
+    _free_history_limit = int(os.getenv("FREE_HISTORY_LIMIT", "10"))
+except ValueError as error:
+    raise RuntimeError("FREE_HISTORY_LIMIT must be an integer") from error
+
+if _free_history_limit < 1:
+    raise RuntimeError("FREE_HISTORY_LIMIT must be positive")
+
 MAX_BOT_TOKEN: str = _max_bot_token
 MAX_API_URL = "https://platform-api2.max.ru"
 
@@ -35,3 +43,5 @@ DATABASE_URL: str = _database_url
 
 OPENAI_API_KEY: str | None = _openai_api_key
 OPENAI_MODEL: str | None = _openai_model
+
+FREE_HISTORY_LIMIT: int = _free_history_limit

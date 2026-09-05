@@ -19,9 +19,16 @@ class BroadcastDeliveryRepository:
         await self.session.execute(
             insert(BroadcastDelivery)
             .from_select(
-                ["broadcast_id", "user_id"],
-                select(literal(broadcast_id), User.id),
-                include_defaults=True,
+                ["broadcast_id", "user_id", "status", "attempts"],
+                select(
+                    literal(broadcast_id),
+                    User.id,
+                    literal(
+                        BroadcastDeliveryStatus.PENDING,
+                        type_=BroadcastDelivery.__table__.c.status.type,
+                    ),
+                    literal(0),
+                ),
             )
             .on_conflict_do_nothing(
                 constraint="uq_broadcast_deliveries_broadcast_user"

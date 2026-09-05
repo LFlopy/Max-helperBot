@@ -10,6 +10,7 @@ from bot.keyboards.admin.broadcasts import (
 from bot.router import Router
 from bot.states.fsm import fsm
 from database.session import session_factory
+from database.models import BroadcastStatus
 from max_client import MaxBot
 from services.admin import AdminBroadcastService, BroadcastSummary
 
@@ -118,18 +119,34 @@ async def broadcast_status(bot: MaxBot, update: dict) -> None:
     payload = update.get("callback", {}).get("payload")
     if not isinstance(payload, str):
         return
+    parts = payload.split(":")
     try:
-        broadcast_id = int(payload.rsplit(":", 1)[1])
-    except ValueError:
+        broadcast_id = int(parts[2])
+    except (IndexError, ValueError):
         return
     async with session_factory() as session:
-        summary = await AdminBroadcastService(session).get_summary(broadcast_id)
+        service = AdminBroadcastService(session)
+        if len(parts) == 4 and parts[3] == "cancel":
+            summary = await service.cancel(broadcast_id)
+        elif len(parts) == 3:
+            summary = await service.get_summary(broadcast_id)
+        else:
+            return
     text = "Рассылка не найдена." if summary is None else _summary_text(summary)
+    can_cancel = summary is not None and summary.status in {
+        BroadcastStatus.PENDING,
+        BroadcastStatus.RUNNING,
+    }
     await bot.answer_callback(
         callback_id=callback_id,
         message={
             "text": text,
-            "attachments": [broadcast_status_keyboard()],
+            "attachments": [
+                broadcast_status_keyboard(
+                    None if summary is None else summary.id,
+                    can_cancel,
+                )
+            ],
         },
     )
 

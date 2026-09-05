@@ -100,6 +100,30 @@ class AdminBroadcastService:
         broadcast = await self.broadcasts.get_by_id(broadcast_id)
         return None if broadcast is None else self._summary(broadcast)
 
+    async def cancel(self, broadcast_id: int) -> BroadcastSummary | None:
+        broadcast = await self.broadcasts.get_by_id(
+            broadcast_id,
+            for_update=True,
+        )
+        if broadcast is None:
+            return None
+        if broadcast.status in {
+            BroadcastStatus.PENDING,
+            BroadcastStatus.RUNNING,
+        }:
+            await self.broadcasts.mark_cancelled(
+                broadcast,
+                datetime.now(timezone.utc),
+            )
+            await self.session.commit()
+            logger.info(
+                "Broadcast cancelled: id=%s sent=%s failed=%s",
+                broadcast.id,
+                broadcast.sent_count,
+                broadcast.failed_count,
+            )
+        return self._summary(broadcast)
+
     async def create(
         self,
         created_by_max_user_id: int,
@@ -160,6 +184,9 @@ class AdminBroadcastService:
 
             retry_pending = False
             for offset in range(0, len(batch), self.concurrency):
+                await self.session.refresh(broadcast)
+                if broadcast.status is BroadcastStatus.CANCELLED:
+                    break
                 delivery_batch = batch[offset : offset + self.concurrency]
                 results = await asyncio.gather(
                     *(

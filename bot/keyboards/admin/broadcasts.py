@@ -52,20 +52,33 @@ def broadcast_list_keyboard(broadcast_ids: tuple[int, ...]) -> dict:
     return {"type": "inline_keyboard", "payload": {"buttons": buttons}}
 
 
-def broadcast_status_keyboard() -> dict:
+def broadcast_status_keyboard(
+    broadcast_id: int | None = None,
+    can_cancel: bool = False,
+) -> dict:
+    buttons: list[list[dict[str, str]]] = []
+    if broadcast_id is not None and can_cancel:
+        buttons.append(
+            [
+                {
+                    "type": "callback",
+                    "text": "Отменить рассылку",
+                    "payload": f"admin:broadcast:{broadcast_id}:cancel",
+                }
+            ]
+        )
+    buttons.append(
+        [
+            {
+                "type": "callback",
+                "text": "Назад",
+                "payload": "admin:broadcasts:status",
+            }
+        ]
+    )
     return {
         "type": "inline_keyboard",
-        "payload": {
-            "buttons": [
-                [
-                    {
-                        "type": "callback",
-                        "text": "Назад",
-                        "payload": "admin:broadcasts:status",
-                    }
-                ]
-            ]
-        },
+        "payload": {"buttons": buttons},
     }
 
 

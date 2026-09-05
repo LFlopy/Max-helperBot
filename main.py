@@ -9,6 +9,7 @@ from max_client import MaxBot
 from bot.dispatcher import Dispatcher
 from database.session import engine, session_factory
 from database.repositories import ProcessedUpdateRepository
+from logging_config import configure_logging
 from services.ai import configure_ai_client, shutdown_ai_client
 from services.update_processing import (
     BackgroundTaskRegistry,
@@ -86,6 +87,7 @@ def create_app(
 
 
 async def main() -> None:
+    configure_logging()
     configure_ai_client()
 
     bot = MaxBot(MAX_BOT_TOKEN)

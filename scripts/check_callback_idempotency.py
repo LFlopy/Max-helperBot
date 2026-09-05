@@ -12,7 +12,7 @@ from bot.handlers.admin.broadcasts import router as broadcasts_router
 from bot.handlers.admin.users import router as users_router
 from bot.states.fsm import fsm
 from config import ADMIN_IDS, WEBHOOK_SECRET
-from database.models import ProcessedUpdate, Subscription, Tariff, User
+from database.models import Broadcast, ProcessedUpdate, Subscription, Tariff, User
 from database.repositories import (
     SubscriptionRepository,
     TariffRepository,
@@ -25,7 +25,8 @@ from scripts.check_webhook_processing import wait_for_background_tasks
 
 
 class FakeBot:
-    def __init__(self) -> None:
+    def __init__(self, broadcast_text: str) -> None:
+        self.broadcast_text = broadcast_text
         self.callback_messages: list[str] = []
         self.sent_messages: list[tuple[int, str]] = []
         self.broadcast_started = asyncio.Event()
@@ -47,7 +48,7 @@ class FakeBot:
         text: str,
         attachments: list | None = None,
     ) -> dict[str, object]:
-        if text == "Callback broadcast check":
+        if text == self.broadcast_text:
             self.broadcast_started.set()
             await self.broadcast_release.wait()
         self.sent_messages.append((user_id, text))
@@ -91,9 +92,13 @@ async def post_twice(
 async def cleanup(
     user_id: int,
     tariff_id: int,
+    broadcast_text: str,
     update_keys: tuple[str, ...],
 ) -> None:
     async with session_factory() as session:
+        await session.execute(
+            delete(Broadcast).where(Broadcast.text == broadcast_text)
+        )
         await session.execute(
             delete(Subscription).where(Subscription.user_id == user_id)
         )
@@ -115,6 +120,7 @@ async def main() -> None:
     grant_callback_id = f"callback-grant-{marker}"
     cancel_callback_id = f"callback-cancel-{marker}"
     broadcast_callback_id = f"callback-broadcast-{marker}"
+    broadcast_text = f"Callback broadcast check {marker}"
     update_keys = tuple(
         f"message_callback:{callback_id}"
         for callback_id in (
@@ -136,7 +142,7 @@ async def main() -> None:
         user_id = user.id
         tariff_id = tariff.id
 
-    fake_bot = FakeBot()
+    fake_bot = FakeBot(broadcast_text)
     dispatcher = Dispatcher()
     dispatcher.include_routers(users_router, broadcasts_router)
     app = create_app(cast(MaxBot, fake_bot), dispatcher)
@@ -188,7 +194,7 @@ async def main() -> None:
         await fsm.set_state(admin_user_id, "admin:broadcast:compose")
         await fsm.set_data(
             admin_user_id,
-            {"broadcast_text": "Callback broadcast check"},
+            {"broadcast_text": broadcast_text},
         )
         broadcast_update = callback_update(
             broadcast_callback_id,
@@ -200,19 +206,22 @@ async def main() -> None:
         elapsed = perf_counter() - started_at
         assert elapsed < 2.0
         await asyncio.wait_for(fake_bot.broadcast_started.wait(), timeout=2.0)
-        assert fake_bot.callback_messages.count("Рассылка запущена.") == 1
+        assert sum(
+            text.startswith("Рассылка #") and text.endswith(" запущена.")
+            for text in fake_bot.callback_messages
+        ) == 1
 
         fake_bot.broadcast_release.set()
         await wait_for_background_tasks(registry)
         assert sum(
-            text.startswith("Рассылка завершена.")
+            text.startswith("Рассылка #") and " завершена." in text
             for _, text in fake_bot.sent_messages
         ) == 1
     finally:
         fake_bot.broadcast_release.set()
         await client.close()
         await fsm.clear(admin_user_id)
-        await cleanup(user_id, tariff_id, update_keys)
+        await cleanup(user_id, tariff_id, broadcast_text, update_keys)
         await engine.dispose()
 
     print("Callback idempotency check passed")

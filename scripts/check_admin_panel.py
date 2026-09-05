@@ -10,7 +10,15 @@ from sqlalchemy import delete, select
 from bot.dispatcher import Dispatcher
 from bot.router import Router
 from config import ADMIN_IDS
-from database.models import Message, Payment, PaymentStatus, Subscription, Tariff, User
+from database.models import (
+    Broadcast,
+    Message,
+    Payment,
+    PaymentStatus,
+    Subscription,
+    Tariff,
+    User,
+)
 from database.repositories import (
     MessageRepository,
     PaymentRepository,
@@ -67,6 +75,11 @@ async def cleanup(
     tariff_codes: Sequence[str],
 ) -> None:
     async with session_factory() as session:
+        await session.execute(
+            delete(Broadcast).where(
+                Broadcast.created_by_max_user_id.in_(max_user_ids)
+            )
+        )
         user_ids = list(
             (
                 await session.execute(
@@ -250,12 +263,15 @@ async def main() -> None:
 
             broadcast = AdminBroadcastService(session, concurrency=3)
             fake_sender = FakeSender({created_user_ids[1], created_user_ids[4]})
-            result = await broadcast.send_to_all(
-                cast(BroadcastSender, fake_sender),
-                created_user_ids,
+            broadcast_id = await broadcast.create(
+                max_user_ids[0],
                 "Admin broadcast check",
             )
-            assert result.successful == 5
+            result = await broadcast.process(
+                broadcast_id,
+                cast(BroadcastSender, fake_sender),
+            )
+            assert result.successful == result.total - 2
             assert result.failed == 2
             assert fake_sender.max_active <= 3
 

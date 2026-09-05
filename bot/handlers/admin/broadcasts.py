@@ -80,11 +80,13 @@ async def compose_broadcast(
         return
 
     async with session_factory() as session:
-        recipients = await AdminBroadcastService(session).get_recipient_ids()
+        recipient_count = await AdminBroadcastService(
+            session
+        ).get_recipient_count()
     await fsm.set_data(user_id, {"broadcast_text": text})
     await bot.send_message(
         user_id=user_id,
-        text=f"Рассылка для {len(recipients)} пользователей.\n\n{text}",
+        text=f"Рассылка для {recipient_count} пользователей.\n\n{text}",
         attachments=[broadcast_preview_keyboard()],
     )
 
@@ -108,21 +110,27 @@ async def confirm_broadcast(bot: MaxBot, update: dict) -> None:
         return
 
     await fsm.clear(user_id)
+    async with session_factory() as session:
+        broadcast_id = await AdminBroadcastService(session).create(
+            created_by_max_user_id=user_id,
+            text=text,
+        )
     await bot.answer_callback(
         callback_id=callback_id,
         message={
-            "text": "Рассылка запущена.",
+            "text": f"Рассылка #{broadcast_id} запущена.",
             "attachments": [broadcasts_keyboard()],
         },
     )
     async with session_factory() as session:
-        service = AdminBroadcastService(session)
-        recipient_ids = await service.get_recipient_ids()
-    result = await service.send_to_all(bot, recipient_ids, text)
+        result = await AdminBroadcastService(session).process(
+            broadcast_id,
+            bot,
+        )
     await bot.send_message(
         user_id=user_id,
         text=(
-            "Рассылка завершена.\n\n"
+            f"Рассылка #{broadcast_id} завершена.\n\n"
             f"Успешно: {result.successful}\n"
             f"Ошибок: {result.failed}"
         ),

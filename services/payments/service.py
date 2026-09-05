@@ -41,6 +41,14 @@ class PaymentCheckout:
     checkout_url: str
 
 
+@dataclass(frozen=True, slots=True)
+class UserPaymentStatus:
+    payment_id: int
+    status: PaymentStatus
+    tariff_name: str
+    subscription_expires_at: datetime | None
+
+
 class PaymentService:
     def __init__(
         self,
@@ -100,6 +108,37 @@ class PaymentService:
             payment_id=payment.id,
             provider_payment_id=payment.provider_payment_id,
             checkout_url=created.checkout_url,
+        )
+
+    async def get_user_payment_status(
+        self,
+        max_user_id: int,
+        payment_id: int,
+    ) -> UserPaymentStatus | None:
+        user = await self.users.get_by_max_user_id(max_user_id)
+        if user is None:
+            return None
+        payment = await self.payments.get_by_id_and_user_id(
+            payment_id,
+            user.id,
+        )
+        if payment is None:
+            return None
+        tariff = await self.tariffs.get_by_id(payment.tariff_id)
+        if tariff is None:
+            raise RuntimeError("Payment tariff does not exist")
+        expires_at = None
+        if payment.status is PaymentStatus.PAID:
+            access = await SubscriptionService(
+                self.session,
+                free_history_limit=1,
+            ).get_user_access(user.id)
+            expires_at = access.expires_at
+        return UserPaymentStatus(
+            payment_id=payment.id,
+            status=payment.status,
+            tariff_name=tariff.name,
+            subscription_expires_at=expires_at,
         )
 
     async def process_successful_confirmation(

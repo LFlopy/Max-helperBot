@@ -17,6 +17,7 @@ from services.payments.service import (
     PaymentStateError,
     PaymentUserNotFoundError,
     TariffUnavailableError,
+    UserPaymentStatus,
 )
 
 __all__ = [
@@ -33,5 +34,6 @@ __all__ = [
     "PaymentStateError",
     "PaymentUserNotFoundError",
     "TariffUnavailableError",
+    "UserPaymentStatus",
     "get_payment_provider",
 ]

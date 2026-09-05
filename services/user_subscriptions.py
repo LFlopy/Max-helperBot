@@ -5,12 +5,18 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import FREE_HISTORY_LIMIT
+from database.models import PaymentStatus
+from database.repositories import PaymentRepository
 from services.subscriptions import (
     AccessType,
     SubscriptionService,
     TrialAccess,
 )
-from services.payments import PaymentService, get_payment_provider
+from services.payments import (
+    PaymentService,
+    UserPaymentStatus,
+    get_payment_provider,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +49,7 @@ class UserSubscriptionService:
             session,
             free_history_limit=FREE_HISTORY_LIMIT,
         )
+        self.payments = PaymentRepository(session)
 
     async def get_profile(self, max_user_id: int) -> UserProfile | None:
         user = await self.subscriptions.users.get_by_max_user_id(max_user_id)
@@ -106,4 +113,29 @@ class UserSubscriptionService:
             payment_id=checkout.payment_id,
             checkout_url=checkout.checkout_url,
             is_test=provider.name == "fake",
+        )
+
+    async def get_payment_status(
+        self,
+        max_user_id: int,
+        payment_id: int,
+    ) -> UserPaymentStatus | None:
+        user = await self.subscriptions.users.get_by_max_user_id(max_user_id)
+        if user is None:
+            return None
+        payment = await self.payments.get_by_id_and_user_id(payment_id, user.id)
+        if payment is None:
+            return None
+        tariff = await self.subscriptions.tariffs.get_by_id(payment.tariff_id)
+        if tariff is None:
+            raise RuntimeError("Payment tariff does not exist")
+        expires_at = None
+        if payment.status is PaymentStatus.PAID:
+            access = await self.subscriptions.get_user_access(user.id)
+            expires_at = access.expires_at
+        return UserPaymentStatus(
+            payment_id=payment.id,
+            status=payment.status,
+            tariff_name=tariff.name,
+            subscription_expires_at=expires_at,
         )

@@ -36,6 +36,19 @@ class PaymentRepository:
     async def get_by_id(self, payment_id: int) -> Payment | None:
         return await self.session.get(Payment, payment_id)
 
+    async def get_by_id_and_user_id(
+        self,
+        payment_id: int,
+        user_id: int,
+    ) -> Payment | None:
+        result = await self.session.execute(
+            select(Payment).where(
+                Payment.id == payment_id,
+                Payment.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def get_by_provider_payment_id(
         self,
         provider: str,

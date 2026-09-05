@@ -2,6 +2,7 @@ from datetime import datetime
 
 from bot.keyboards.user.subscriptions import (
     checkout_keyboard,
+    payment_status_keyboard,
     profile_keyboard,
     tariff_details_keyboard,
     tariffs_keyboard,
@@ -16,6 +17,7 @@ from services.subscriptions import (
 )
 from services.user_subscriptions import UserProfile, UserSubscriptionService
 from services.payments import PaymentProviderUnavailableError, PaymentServiceError
+from database.models import PaymentStatus
 
 
 router = Router()
@@ -235,5 +237,57 @@ async def handle_tariff_details(bot: MaxBot, update: dict) -> None:
                 ]
             ),
             "attachments": [tariff_details_keyboard(tariff.id)],
+        },
+    )
+
+
+@router.callback_prefix("payment:status:")
+async def handle_payment_status(bot: MaxBot, update: dict) -> None:
+    context = _callback_context(update)
+    if context is None:
+        return
+    callback, callback_id, user_id = context
+    payload = callback.get("payload")
+    if not isinstance(payload, str):
+        return
+    try:
+        payment_id = int(payload.rsplit(":", 1)[1])
+    except ValueError:
+        return
+    async with session_factory() as session:
+        payment = await UserSubscriptionService(session).get_payment_status(
+            user_id,
+            payment_id,
+        )
+    if payment is None:
+        await bot.answer_callback(
+            callback_id=callback_id,
+            message={"text": "Платёж не найден."},
+        )
+        return
+    if payment.status is PaymentStatus.PAID:
+        text = "\n".join(
+            [
+                "Оплата получена.",
+                f"Тариф: {payment.tariff_name}",
+                f"Подписка действует до: {_date(payment.subscription_expires_at)}",
+            ]
+        )
+    elif payment.status is PaymentStatus.PENDING:
+        text = "Оплата ещё ожидается. Проверьте статус немного позже."
+    elif payment.status is PaymentStatus.CANCELED:
+        text = "Оплата отменена."
+    else:
+        text = "Оплата не прошла. Вы можете выбрать тариф снова."
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": text,
+            "attachments": [
+                payment_status_keyboard(
+                    payment.payment_id,
+                    payment.status is PaymentStatus.PAID,
+                )
+            ],
         },
     )

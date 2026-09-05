@@ -122,3 +122,36 @@ def checkout_keyboard(payment_id: int, checkout_url: str) -> dict:
             ]
         },
     }
+
+
+def payment_status_keyboard(payment_id: int, paid: bool) -> dict:
+    buttons: list[list[dict[str, str]]] = []
+    if not paid:
+        buttons.append(
+            [
+                {
+                    "type": "callback",
+                    "text": "Проверить ещё раз",
+                    "payload": f"payment:status:{payment_id}",
+                }
+            ]
+        )
+    buttons.extend(
+        [
+            [
+                {
+                    "type": "callback",
+                    "text": "Профиль",
+                    "payload": "user:profile",
+                }
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": "Главная",
+                    "payload": "user:main",
+                }
+            ],
+        ]
+    )
+    return {"type": "inline_keyboard", "payload": {"buttons": buttons}}

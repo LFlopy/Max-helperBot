@@ -262,7 +262,7 @@ async def main() -> None:
             assert statistics.messages_24h == baseline.messages_24h + 1
 
             broadcast = AdminBroadcastService(session, concurrency=3)
-            fake_sender = FakeSender({created_user_ids[1], created_user_ids[4]})
+            fake_sender = FakeSender({max_user_ids[1], max_user_ids[4]})
             broadcast_id = await broadcast.create(
                 max_user_ids[0],
                 "Admin broadcast check",

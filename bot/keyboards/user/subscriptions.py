@@ -60,3 +60,34 @@ def tariffs_keyboard(tariffs: tuple[tuple[int, str], ...]) -> dict:
         ]
     )
     return {"type": "inline_keyboard", "payload": {"buttons": buttons}}
+
+
+def tariff_details_keyboard(tariff_id: int) -> dict:
+    return {
+        "type": "inline_keyboard",
+        "payload": {
+            "buttons": [
+                [
+                    {
+                        "type": "callback",
+                        "text": "Купить",
+                        "payload": f"user:tariff:{tariff_id}:buy",
+                    }
+                ],
+                [
+                    {
+                        "type": "callback",
+                        "text": "Назад",
+                        "payload": "user:tariffs",
+                    }
+                ],
+                [
+                    {
+                        "type": "callback",
+                        "text": "Главная",
+                        "payload": "user:main",
+                    }
+                ],
+            ]
+        },
+    }

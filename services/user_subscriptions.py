@@ -59,3 +59,14 @@ class UserSubscriptionService:
             )
             for tariff in tariffs
         )
+
+    async def get_tariff(self, tariff_id: int) -> UserTariff | None:
+        tariff = await self.subscriptions.tariffs.get_by_id(tariff_id)
+        if tariff is None or not tariff.is_active:
+            return None
+        return UserTariff(
+            id=tariff.id,
+            name=tariff.name,
+            price=tariff.price,
+            duration_days=tariff.duration_days,
+        )

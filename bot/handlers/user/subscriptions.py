@@ -1,6 +1,10 @@
 from datetime import datetime
 
-from bot.keyboards.user.subscriptions import profile_keyboard, tariffs_keyboard
+from bot.keyboards.user.subscriptions import (
+    profile_keyboard,
+    tariff_details_keyboard,
+    tariffs_keyboard,
+)
 from bot.router import Router
 from database.session import session_factory
 from max_client import MaxBot
@@ -106,5 +110,49 @@ async def handle_tariffs(bot: MaxBot, update: dict) -> None:
                     tuple((tariff.id, tariff.name) for tariff in tariffs)
                 )
             ],
+        },
+    )
+
+
+@router.callback_prefix("user:tariff:")
+async def handle_tariff_details(bot: MaxBot, update: dict) -> None:
+    context = _callback_context(update)
+    if context is None:
+        return
+    callback, callback_id, _ = context
+    payload = callback.get("payload")
+    if not isinstance(payload, str):
+        return
+    parts = payload.split(":")
+    if len(parts) != 3:
+        return
+    try:
+        tariff_id = int(parts[2])
+    except ValueError:
+        return
+    async with session_factory() as session:
+        tariff = await UserSubscriptionService(session).get_tariff(tariff_id)
+    if tariff is None:
+        await bot.answer_callback(
+            callback_id=callback_id,
+            message={
+                "text": "Этот тариф сейчас недоступен.",
+                "attachments": [tariffs_keyboard(())],
+            },
+        )
+        return
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": "\n".join(
+                [
+                    tariff.name,
+                    "",
+                    f"Стоимость: {tariff.price:.2f} ₽",
+                    f"Срок доступа: {tariff.duration_days} дней",
+                    "Доступ ко всем возможностям помощника на срок тарифа.",
+                ]
+            ),
+            "attachments": [tariff_details_keyboard(tariff.id)],
         },
     )

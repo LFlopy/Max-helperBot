@@ -107,9 +107,17 @@ class MaxUpdateProcessor:
     async def process(
         self,
         update: dict[str, object],
-        _identity: UpdateIdentity,
+        identity: UpdateIdentity,
     ) -> None:
-        await self.dispatcher.dispatch(
-            bot=self.bot,
-            update=update,
-        )
+        try:
+            await self.dispatcher.dispatch(
+                bot=self.bot,
+                update=update,
+            )
+        except Exception as error:
+            logger.exception(
+                "MAX update processing failed: type=%s key=%s error=%s",
+                identity.update_type,
+                identity.key,
+                type(error).__name__,
+            )

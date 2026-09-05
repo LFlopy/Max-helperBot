@@ -20,6 +20,13 @@ def admin_main_menu() -> dict:
                 [
                     {
                         "type": "callback",
+                        "text": "Тарифы",
+                        "payload": "user:tariffs",
+                    }
+                ],
+                [
+                    {
+                        "type": "callback",
                         "text": "Админ панель",
                         "payload": "admin:main",
                     }

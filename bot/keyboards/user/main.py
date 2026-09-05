@@ -9,7 +9,14 @@ def start_keyboard() -> dict:
                         "text": "Что я умею",
                         "payload": "user:capabilities",
                     }
-                ]
+                ],
+                [
+                    {
+                        "type": "callback",
+                        "text": "Главное меню",
+                        "payload": "user:main",
+                    }
+                ],
             ]
         },
     }

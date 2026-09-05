@@ -17,6 +17,13 @@ def main_menu() -> dict:
                         "payload": "user:profile",
                     }
                 ],
+                [
+                    {
+                        "type": "callback",
+                        "text": "Тарифы",
+                        "payload": "user:tariffs",
+                    }
+                ],
             ]
         },
     }

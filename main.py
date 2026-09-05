@@ -97,24 +97,21 @@ async def main() -> None:
     dispatcher.include_routers(*ROUTERS)
 
     app = create_app(bot, dispatcher)
-
     runner = web.AppRunner(app)
-    await runner.setup()
-
-    site = web.TCPSite(
-        runner,
-        host="0.0.0.0",
-        port=8080,
-    )
-
-    await site.start()
-    print("webhook server started")
 
     try:
+        await runner.setup()
+        site = web.TCPSite(
+            runner,
+            host="0.0.0.0",
+            port=8080,
+        )
+        await site.start()
+        print("webhook server started")
         await asyncio.Event().wait()
     finally:
-        await bot.close()
         await runner.cleanup()
+        await bot.close()
 
 
 if __name__ == "__main__":

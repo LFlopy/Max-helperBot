@@ -4,6 +4,9 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
+from bot.dispatcher import Dispatcher
+from max_client import MaxBot
+
 
 logger = logging.getLogger(__name__)
 
@@ -90,3 +93,23 @@ class BackgroundTaskRegistry:
             task.cancel()
         if pending:
             await asyncio.gather(*pending, return_exceptions=True)
+
+
+class MaxUpdateProcessor:
+    def __init__(
+        self,
+        bot: MaxBot,
+        dispatcher: Dispatcher,
+    ) -> None:
+        self.bot = bot
+        self.dispatcher = dispatcher
+
+    async def process(
+        self,
+        update: dict[str, object],
+        _identity: UpdateIdentity,
+    ) -> None:
+        await self.dispatcher.dispatch(
+            bot=self.bot,
+            update=update,
+        )

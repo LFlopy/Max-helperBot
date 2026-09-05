@@ -12,16 +12,16 @@ from database.repositories import ProcessedUpdateRepository
 from services.ai import configure_ai_client, shutdown_ai_client
 from services.update_processing import (
     BackgroundTaskRegistry,
+    MaxUpdateProcessor,
     get_update_identity,
 )
 
 
-BOT_KEY = web.AppKey("bot", MaxBot)
-DISPATCHER_KEY = web.AppKey("dispatcher", Dispatcher)
 BACKGROUND_TASKS_KEY = web.AppKey(
     "background_tasks",
     BackgroundTaskRegistry,
 )
+UPDATE_PROCESSOR_KEY = web.AppKey("update_processor", MaxUpdateProcessor)
 
 
 async def close_background_tasks(app: web.Application) -> None:
@@ -65,10 +65,7 @@ async def webhook_handler(request: web.Request) -> web.Response:
         return web.Response(status=200)
 
     request.app[BACKGROUND_TASKS_KEY].schedule(
-        request.app[DISPATCHER_KEY].dispatch(
-            bot=request.app[BOT_KEY],
-            update=update,
-        )
+        request.app[UPDATE_PROCESSOR_KEY].process(update, identity)
     )
 
     return web.Response(status=200)
@@ -79,9 +76,8 @@ def create_app(
     dispatcher: Dispatcher,
 ) -> web.Application:
     app = web.Application()
-    app[BOT_KEY] = bot
-    app[DISPATCHER_KEY] = dispatcher
     app[BACKGROUND_TASKS_KEY] = BackgroundTaskRegistry()
+    app[UPDATE_PROCESSOR_KEY] = MaxUpdateProcessor(bot, dispatcher)
     app.on_cleanup.append(close_background_tasks)
     app.on_cleanup.append(close_ai_client)
     app.on_cleanup.append(close_database)

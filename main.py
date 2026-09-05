@@ -11,6 +11,7 @@ from database.session import engine, session_factory
 from database.repositories import ProcessedUpdateRepository
 from logging_config import configure_logging
 from services.ai import configure_ai_client, shutdown_ai_client
+from services.admin.broadcast_recovery import BroadcastRecoveryManager
 from services.update_processing import (
     BackgroundTaskRegistry,
     MaxUpdateProcessor,
@@ -23,6 +24,14 @@ BACKGROUND_TASKS_KEY = web.AppKey(
     BackgroundTaskRegistry,
 )
 UPDATE_PROCESSOR_KEY = web.AppKey("update_processor", MaxUpdateProcessor)
+BROADCAST_RECOVERY_KEY = web.AppKey(
+    "broadcast_recovery",
+    BroadcastRecoveryManager,
+)
+
+
+async def resume_broadcasts(app: web.Application) -> None:
+    await app[BROADCAST_RECOVERY_KEY].resume_unfinished()
 
 
 async def close_background_tasks(app: web.Application) -> None:
@@ -79,6 +88,12 @@ def create_app(
     app = web.Application()
     app[BACKGROUND_TASKS_KEY] = BackgroundTaskRegistry()
     app[UPDATE_PROCESSOR_KEY] = MaxUpdateProcessor(bot, dispatcher)
+    app[BROADCAST_RECOVERY_KEY] = BroadcastRecoveryManager(
+        session_factory,
+        app[BACKGROUND_TASKS_KEY],
+        bot,
+    )
+    app.on_startup.append(resume_broadcasts)
     app.on_cleanup.append(close_background_tasks)
     app.on_cleanup.append(close_ai_client)
     app.on_cleanup.append(close_database)

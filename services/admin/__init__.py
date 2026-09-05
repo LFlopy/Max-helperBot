@@ -3,6 +3,7 @@ from services.admin.broadcasts import (
     BroadcastResult,
     BroadcastSender,
 )
+from services.admin.broadcast_recovery import BroadcastRecoveryManager
 from services.admin.statistics import AdminStatistics, AdminStatisticsService
 from services.admin.subscriptions import (
     ActiveSubscriptionPage,
@@ -21,6 +22,7 @@ from services.admin.users import (
 
 __all__ = [
     "AdminBroadcastService",
+    "BroadcastRecoveryManager",
     "ActiveSubscriptionPage",
     "ActiveSubscriptionSummary",
     "AdminSubscriptionOverview",

@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from datetime import datetime
+from uuid import uuid4
 
 from database.models import PaymentStatus
 from services.payments.models import (
@@ -17,7 +18,7 @@ class FakePaymentProvider:
 
     async def create_payment(self, request: PaymentRequest) -> CreatedPayment:
         self.requests.append(request)
-        payment_id = f"fake-{len(self.requests)}"
+        payment_id = f"fake-{uuid4().hex}"
         return CreatedPayment(
             provider_payment_id=payment_id,
             checkout_url=f"https://payments.example/{payment_id}",

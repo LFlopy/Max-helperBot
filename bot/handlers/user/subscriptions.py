@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from bot.keyboards.user.subscriptions import (
+    checkout_keyboard,
     profile_keyboard,
     tariff_details_keyboard,
     tariffs_keyboard,
@@ -14,6 +15,7 @@ from services.subscriptions import (
     TrialUnavailableError,
 )
 from services.user_subscriptions import UserProfile, UserSubscriptionService
+from services.payments import PaymentProviderUnavailableError, PaymentServiceError
 
 
 router = Router()
@@ -158,16 +160,56 @@ async def handle_tariff_details(bot: MaxBot, update: dict) -> None:
     context = _callback_context(update)
     if context is None:
         return
-    callback, callback_id, _ = context
+    callback, callback_id, user_id = context
     payload = callback.get("payload")
     if not isinstance(payload, str):
         return
     parts = payload.split(":")
-    if len(parts) != 3:
-        return
     try:
         tariff_id = int(parts[2])
-    except ValueError:
+    except (IndexError, ValueError):
+        return
+    if len(parts) == 4 and parts[3] == "buy":
+        try:
+            async with session_factory() as session:
+                checkout = await UserSubscriptionService(
+                    session
+                ).create_checkout(user_id, tariff_id)
+        except PaymentProviderUnavailableError:
+            await bot.answer_callback(
+                callback_id=callback_id,
+                message={
+                    "text": "Онлайн-оплата пока недоступна.",
+                    "attachments": [tariff_details_keyboard(tariff_id)],
+                },
+            )
+            return
+        except (PaymentServiceError, ValueError):
+            await bot.answer_callback(
+                callback_id=callback_id,
+                message={"text": "Этот тариф сейчас недоступен."},
+            )
+            return
+        label = "Тестовая оплата" if checkout.is_test else "Оплата"
+        await bot.answer_callback(
+            callback_id=callback_id,
+            message={
+                "text": (
+                    f"{label} создана.\n\n"
+                    "Это тестовая ссылка: она не списывает реальные деньги."
+                    if checkout.is_test
+                    else "Оплата создана. Перейдите по ссылке ниже."
+                ),
+                "attachments": [
+                    checkout_keyboard(
+                        checkout.payment_id,
+                        checkout.checkout_url,
+                    )
+                ],
+            },
+        )
+        return
+    if len(parts) != 3:
         return
     async with session_factory() as session:
         tariff = await UserSubscriptionService(session).get_tariff(tariff_id)

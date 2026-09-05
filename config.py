@@ -31,6 +31,7 @@ if not _database_url:
 
 _openai_api_key = os.getenv("OPENAI_API_KEY")
 _openai_model = os.getenv("OPENAI_MODEL")
+_payment_provider = os.getenv("PAYMENT_PROVIDER", "disabled").strip().lower()
 _sqlalchemy_echo = _parse_bool(
     os.getenv("SQLALCHEMY_ECHO", "false"),
     "SQLALCHEMY_ECHO",
@@ -87,6 +88,8 @@ if _broadcast_retry_backoff_seconds < 0:
     raise RuntimeError("BROADCAST_RETRY_BACKOFF_SECONDS cannot be negative")
 if _broadcast_max_attempts < 1:
     raise RuntimeError("BROADCAST_MAX_ATTEMPTS must be positive")
+if _payment_provider not in {"disabled", "fake"}:
+    raise RuntimeError("PAYMENT_PROVIDER must be disabled or fake")
 
 MAX_BOT_TOKEN: str = _max_bot_token
 MAX_API_URL = "https://platform-api2.max.ru"
@@ -104,6 +107,7 @@ DATABASE_URL: str = _database_url
 
 OPENAI_API_KEY: str | None = _openai_api_key
 OPENAI_MODEL: str | None = _openai_model
+PAYMENT_PROVIDER: str = _payment_provider
 
 FREE_HISTORY_LIMIT: int = _free_history_limit
 TRIAL_DURATION_DAYS: int = _trial_duration_days

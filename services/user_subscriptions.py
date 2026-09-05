@@ -10,6 +10,7 @@ from services.subscriptions import (
     SubscriptionService,
     TrialAccess,
 )
+from services.payments import PaymentService, get_payment_provider
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +28,13 @@ class UserTariff:
     name: str
     price: Decimal
     duration_days: int
+
+
+@dataclass(frozen=True, slots=True)
+class UserCheckout:
+    payment_id: int
+    checkout_url: str
+    is_test: bool
 
 
 class UserSubscriptionService:
@@ -79,4 +87,23 @@ class UserSubscriptionService:
             name=tariff.name,
             price=tariff.price,
             duration_days=tariff.duration_days,
+        )
+
+    async def create_checkout(
+        self,
+        max_user_id: int,
+        tariff_id: int,
+    ) -> UserCheckout:
+        tariff = await self.subscriptions.tariffs.get_by_id(tariff_id)
+        if tariff is None or not tariff.is_active:
+            raise ValueError("Tariff is not available")
+        provider = get_payment_provider()
+        checkout = await PaymentService(
+            self.subscriptions.session,
+            provider,
+        ).create_payment(max_user_id, tariff.code)
+        return UserCheckout(
+            payment_id=checkout.payment_id,
+            checkout_url=checkout.checkout_url,
+            is_test=provider.name == "fake",
         )

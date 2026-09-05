@@ -1,4 +1,8 @@
 from services.payments.fake import FakePaymentProvider
+from services.payments.configuration import (
+    PaymentProviderUnavailableError,
+    get_payment_provider,
+)
 from services.payments.models import (
     CreatedPayment,
     PaymentConfirmation,
@@ -20,6 +24,7 @@ __all__ = [
     "FakePaymentProvider",
     "PaymentConfirmation",
     "PaymentProvider",
+    "PaymentProviderUnavailableError",
     "PaymentRequest",
     "PaymentCheckout",
     "PaymentNotFoundError",
@@ -28,4 +33,5 @@ __all__ = [
     "PaymentStateError",
     "PaymentUserNotFoundError",
     "TariffUnavailableError",
+    "get_payment_provider",
 ]

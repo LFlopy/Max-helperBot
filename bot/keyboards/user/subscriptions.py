@@ -91,3 +91,34 @@ def tariff_details_keyboard(tariff_id: int) -> dict:
             ]
         },
     }
+
+
+def checkout_keyboard(payment_id: int, checkout_url: str) -> dict:
+    return {
+        "type": "inline_keyboard",
+        "payload": {
+            "buttons": [
+                [
+                    {
+                        "type": "link",
+                        "text": "Перейти к тестовой оплате",
+                        "url": checkout_url,
+                    }
+                ],
+                [
+                    {
+                        "type": "callback",
+                        "text": "Проверить статус",
+                        "payload": f"payment:status:{payment_id}",
+                    }
+                ],
+                [
+                    {
+                        "type": "callback",
+                        "text": "Назад к тарифам",
+                        "payload": "user:tariffs",
+                    }
+                ],
+            ]
+        },
+    }

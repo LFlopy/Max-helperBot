@@ -108,20 +108,25 @@ async def confirm_broadcast(bot: MaxBot, update: dict) -> None:
         return
 
     await fsm.clear(user_id)
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": "Рассылка запущена.",
+            "attachments": [broadcasts_keyboard()],
+        },
+    )
     async with session_factory() as session:
         service = AdminBroadcastService(session)
         recipient_ids = await service.get_recipient_ids()
     result = await service.send_to_all(bot, recipient_ids, text)
-    await bot.answer_callback(
-        callback_id=callback_id,
-        message={
-            "text": (
-                "Рассылка завершена.\n\n"
-                f"Успешно: {result.successful}\n"
-                f"Ошибок: {result.failed}"
-            ),
-            "attachments": [broadcasts_keyboard()],
-        },
+    await bot.send_message(
+        user_id=user_id,
+        text=(
+            "Рассылка завершена.\n\n"
+            f"Успешно: {result.successful}\n"
+            f"Ошибок: {result.failed}"
+        ),
+        attachments=[broadcasts_keyboard()],
     )
 
 

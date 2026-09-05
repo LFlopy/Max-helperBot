@@ -1,6 +1,7 @@
 from database.repositories.admin import AdminRepository
 from database.repositories.messages import MessageRepository
 from database.repositories.payments import PaymentRepository
+from database.repositories.processed_updates import ProcessedUpdateRepository
 from database.repositories.subscriptions import SubscriptionRepository
 from database.repositories.statistics import StatisticsRepository
 from database.repositories.tariffs import TariffRepository
@@ -10,6 +11,7 @@ __all__ = [
     "AdminRepository",
     "MessageRepository",
     "PaymentRepository",
+    "ProcessedUpdateRepository",
     "SubscriptionRepository",
     "StatisticsRepository",
     "TariffRepository",

@@ -4,12 +4,12 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from config import DATABASE_URL
+from config import DATABASE_URL, SQLALCHEMY_ECHO
 
 
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,
+    echo=SQLALCHEMY_ECHO,
 )
 
 session_factory = async_sessionmaker(

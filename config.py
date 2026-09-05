@@ -4,6 +4,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _parse_bool(value: str, name: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} must be a boolean")
+
 _max_bot_token = os.getenv("BOT_TOKEN")
 if not _max_bot_token:
     raise RuntimeError("BOT_TOKEN is not set")
@@ -22,6 +31,10 @@ if not _database_url:
 
 _openai_api_key = os.getenv("OPENAI_API_KEY")
 _openai_model = os.getenv("OPENAI_MODEL")
+_sqlalchemy_echo = _parse_bool(
+    os.getenv("SQLALCHEMY_ECHO", "false"),
+    "SQLALCHEMY_ECHO",
+)
 
 try:
     _max_api_timeout_seconds = float(
@@ -71,3 +84,4 @@ OPENAI_MODEL: str | None = _openai_model
 FREE_HISTORY_LIMIT: int = _free_history_limit
 TRIAL_DURATION_DAYS: int = _trial_duration_days
 TRIAL_HISTORY_LIMIT: int = _trial_history_limit
+SQLALCHEMY_ECHO: bool = _sqlalchemy_echo

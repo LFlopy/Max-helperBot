@@ -1,5 +1,8 @@
 from database.repositories.admin import AdminRepository
 from database.repositories.broadcasts import BroadcastRepository
+from database.repositories.broadcast_deliveries import (
+    BroadcastDeliveryRepository,
+)
 from database.repositories.messages import MessageRepository
 from database.repositories.payments import PaymentRepository
 from database.repositories.processed_updates import ProcessedUpdateRepository
@@ -11,6 +14,7 @@ from database.repositories.users import UserRepository
 __all__ = [
     "AdminRepository",
     "BroadcastRepository",
+    "BroadcastDeliveryRepository",
     "MessageRepository",
     "PaymentRepository",
     "ProcessedUpdateRepository",

@@ -24,6 +24,13 @@ _openai_api_key = os.getenv("OPENAI_API_KEY")
 _openai_model = os.getenv("OPENAI_MODEL")
 
 try:
+    _max_api_timeout_seconds = float(
+        os.getenv("MAX_API_TIMEOUT_SECONDS", "15")
+    )
+except ValueError as error:
+    raise RuntimeError("MAX_API_TIMEOUT_SECONDS must be a number") from error
+
+try:
     _free_history_limit = int(os.getenv("FREE_HISTORY_LIMIT", "10"))
 except ValueError as error:
     raise RuntimeError("FREE_HISTORY_LIMIT must be an integer") from error
@@ -44,9 +51,12 @@ if _trial_duration_days < 1:
     raise RuntimeError("TRIAL_DURATION_DAYS must be positive")
 if _trial_history_limit < 1:
     raise RuntimeError("TRIAL_HISTORY_LIMIT must be positive")
+if _max_api_timeout_seconds <= 0:
+    raise RuntimeError("MAX_API_TIMEOUT_SECONDS must be positive")
 
 MAX_BOT_TOKEN: str = _max_bot_token
 MAX_API_URL = "https://platform-api2.max.ru"
+MAX_API_TIMEOUT_SECONDS: float = _max_api_timeout_seconds
 
 WEBHOOK_SECRET: str = _webhook_secret
 WEBHOOK_URL: str = "https://ovchuntonova.ru/max-helper/webhook"

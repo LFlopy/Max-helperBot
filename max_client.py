@@ -2,7 +2,7 @@ import ssl
 from typing import Any
 import aiohttp
 
-from config import MAX_API_URL
+from config import MAX_API_TIMEOUT_SECONDS, MAX_API_URL
 
 
 class MaxBot:
@@ -25,6 +25,7 @@ class MaxBot:
 
         self.session = aiohttp.ClientSession(
             connector=connector,
+            timeout=aiohttp.ClientTimeout(total=MAX_API_TIMEOUT_SECONDS),
             headers={
                 "Authorization": self.token,
             },

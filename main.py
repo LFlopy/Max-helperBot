@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from aiohttp import web
 
@@ -6,8 +7,25 @@ from bot.handlers import ROUTERS
 from config import MAX_BOT_TOKEN, WEBHOOK_SECRET
 from max_client import MaxBot
 from bot.dispatcher import Dispatcher
-from database.session import engine
+from database.session import engine, session_factory
+from database.repositories import ProcessedUpdateRepository
 from services.ai import configure_ai_client, shutdown_ai_client
+from services.update_processing import (
+    BackgroundTaskRegistry,
+    get_update_identity,
+)
+
+
+BOT_KEY = web.AppKey("bot", MaxBot)
+DISPATCHER_KEY = web.AppKey("dispatcher", Dispatcher)
+BACKGROUND_TASKS_KEY = web.AppKey(
+    "background_tasks",
+    BackgroundTaskRegistry,
+)
+
+
+async def close_background_tasks(app: web.Application) -> None:
+    await app[BACKGROUND_TASKS_KEY].close()
 
 
 async def close_database(_app: web.Application) -> None:
@@ -18,26 +36,60 @@ async def close_ai_client(_app: web.Application) -> None:
     await shutdown_ai_client()
 
 
-async def webhook_handler(request: web.Request):
+async def webhook_handler(request: web.Request) -> web.Response:
     secret = request.headers.get("X-max-Bot-Api-Secret")
 
     if secret != WEBHOOK_SECRET:
         return web.Response(status=403)
 
-    update = await request.json()
+    try:
+        update = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return web.Response(status=400)
+    if not isinstance(update, dict):
+        return web.Response(status=400)
 
-    bot: MaxBot = request.app["bot"]
-    dispatcher: Dispatcher = request.app["dispatcher"]
+    try:
+        identity = get_update_identity(update)
+    except ValueError:
+        return web.Response(status=400)
+    if identity is None:
+        return web.Response(status=200)
 
-    await dispatcher.dispatch(
-        bot=bot,
-        update=update,
+    async with session_factory() as session:
+        registered = await ProcessedUpdateRepository(session).register(
+            update_key=identity.key,
+            update_type=identity.update_type,
+        )
+    if not registered:
+        return web.Response(status=200)
+
+    request.app[BACKGROUND_TASKS_KEY].schedule(
+        request.app[DISPATCHER_KEY].dispatch(
+            bot=request.app[BOT_KEY],
+            update=update,
+        )
     )
 
     return web.Response(status=200)
 
 
-async def main():
+def create_app(
+    bot: MaxBot,
+    dispatcher: Dispatcher,
+) -> web.Application:
+    app = web.Application()
+    app[BOT_KEY] = bot
+    app[DISPATCHER_KEY] = dispatcher
+    app[BACKGROUND_TASKS_KEY] = BackgroundTaskRegistry()
+    app.on_cleanup.append(close_background_tasks)
+    app.on_cleanup.append(close_ai_client)
+    app.on_cleanup.append(close_database)
+    app.router.add_post("/max-helper/webhook", webhook_handler)
+    return app
+
+
+async def main() -> None:
     configure_ai_client()
 
     bot = MaxBot(MAX_BOT_TOKEN)
@@ -46,17 +98,7 @@ async def main():
     dispatcher = Dispatcher()
     dispatcher.include_routers(*ROUTERS)
 
-    app = web.Application()
-
-    app["bot"] = bot
-    app["dispatcher"] = dispatcher
-    app.on_cleanup.append(close_ai_client)
-    app.on_cleanup.append(close_database)
-
-    app.router.add_post(
-        "/max-helper/webhook",
-        webhook_handler,
-    )
+    app = create_app(bot, dispatcher)
 
     runner = web.AppRunner(app)
     await runner.setup()

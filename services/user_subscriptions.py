@@ -5,7 +5,11 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import FREE_HISTORY_LIMIT
-from services.subscriptions import AccessType, SubscriptionService
+from services.subscriptions import (
+    AccessType,
+    SubscriptionService,
+    TrialAccess,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +51,12 @@ class UserSubscriptionService:
                 and user.trial_used_at is None
             ),
         )
+
+    async def activate_trial(self, max_user_id: int) -> TrialAccess:
+        user = await self.subscriptions.users.get_by_max_user_id(max_user_id)
+        if user is None:
+            raise ValueError("User not found")
+        return await self.subscriptions.activate_trial(user.id)
 
     async def list_tariffs(self) -> tuple[UserTariff, ...]:
         tariffs = await self.subscriptions.tariffs.list_active()

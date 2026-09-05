@@ -8,7 +8,11 @@ from bot.keyboards.user.subscriptions import (
 from bot.router import Router
 from database.session import session_factory
 from max_client import MaxBot
-from services.subscriptions import AccessType
+from services.subscriptions import (
+    AccessType,
+    TrialAlreadyUsedError,
+    TrialUnavailableError,
+)
 from services.user_subscriptions import UserProfile, UserSubscriptionService
 
 
@@ -83,6 +87,41 @@ async def handle_profile(bot: MaxBot, update: dict) -> None:
         return
     _, callback_id, user_id = context
     await _show_profile(bot, callback_id, user_id)
+
+
+@router.callback("user:trial:activate")
+async def handle_trial_activation(bot: MaxBot, update: dict) -> None:
+    context = _callback_context(update)
+    if context is None:
+        return
+    _, callback_id, user_id = context
+    try:
+        async with session_factory() as session:
+            trial = await UserSubscriptionService(session).activate_trial(user_id)
+    except TrialAlreadyUsedError:
+        text = "Пробный период уже был использован."
+    except TrialUnavailableError:
+        text = "У вас уже действует оплаченная подписка."
+    except ValueError:
+        text = "Сначала запустите бота командой /start."
+    else:
+        text = (
+            "Пробный период активирован.\n"
+            f"Бесплатный доступ действует до {_date(trial.expires_at)}."
+        )
+    async with session_factory() as session:
+        profile = await UserSubscriptionService(session).get_profile(user_id)
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": text,
+            "attachments": [
+                profile_keyboard(
+                    profile.can_activate_trial if profile is not None else False
+                )
+            ],
+        },
+    )
 
 
 @router.callback("user:tariffs")

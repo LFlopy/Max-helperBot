@@ -5,6 +5,7 @@ from services.subscriptions import (
     SubscriptionService,
     TrialAccess,
     TrialAlreadyUsedError,
+    TrialUnavailableError,
     UserAccess,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "SubscriptionService",
     "TrialAccess",
     "TrialAlreadyUsedError",
+    "TrialUnavailableError",
     "UserAccess",
 ]

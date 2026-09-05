@@ -39,6 +39,10 @@ class TrialAlreadyUsedError(Exception):
     pass
 
 
+class TrialUnavailableError(Exception):
+    pass
+
+
 class SubscriptionService:
     def __init__(
         self,
@@ -75,6 +79,13 @@ class SubscriptionService:
             user = await self.users.get_by_id(user_id, for_update=True)
             if user is None:
                 raise ValueError("User not found")
+            active_subscription = await self.subscriptions.get_active_by_user(
+                user_id,
+                now=current_time,
+                for_update=True,
+            )
+            if active_subscription is not None:
+                raise TrialUnavailableError("Paid subscription is active")
             if user.trial_used_at is not None:
                 raise TrialAlreadyUsedError("Trial has already been used")
 

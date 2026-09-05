@@ -1,3 +1,4 @@
+from database.models.broadcast import Broadcast, BroadcastStatus
 from database.models.message import Message
 from database.models.payment import Payment, PaymentStatus
 from database.models.processed_update import ProcessedUpdate
@@ -6,6 +7,8 @@ from database.models.tariff import Tariff
 from database.models.user import User
 
 __all__ = [
+    "Broadcast",
+    "BroadcastStatus",
     "Message",
     "Payment",
     "PaymentStatus",

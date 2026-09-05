@@ -28,3 +28,35 @@ def profile_keyboard(can_activate_trial: bool) -> dict:
         ]
     )
     return {"type": "inline_keyboard", "payload": {"buttons": buttons}}
+
+
+def tariffs_keyboard(tariffs: tuple[tuple[int, str], ...]) -> dict:
+    buttons = [
+        [
+            {
+                "type": "callback",
+                "text": name,
+                "payload": f"user:tariff:{tariff_id}",
+            }
+        ]
+        for tariff_id, name in tariffs
+    ]
+    buttons.extend(
+        [
+            [
+                {
+                    "type": "callback",
+                    "text": "Назад",
+                    "payload": "user:profile",
+                }
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": "Главная",
+                    "payload": "user:main",
+                }
+            ],
+        ]
+    )
+    return {"type": "inline_keyboard", "payload": {"buttons": buttons}}

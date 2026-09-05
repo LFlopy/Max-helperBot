@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,14 @@ class UserProfile:
     tariff_name: str | None
     expires_at: datetime | None
     can_activate_trial: bool
+
+
+@dataclass(frozen=True, slots=True)
+class UserTariff:
+    id: int
+    name: str
+    price: Decimal
+    duration_days: int
 
 
 class UserSubscriptionService:
@@ -37,4 +46,16 @@ class UserSubscriptionService:
                 access.access_type is AccessType.FREE
                 and user.trial_used_at is None
             ),
+        )
+
+    async def list_tariffs(self) -> tuple[UserTariff, ...]:
+        tariffs = await self.subscriptions.tariffs.list_active()
+        return tuple(
+            UserTariff(
+                id=tariff.id,
+                name=tariff.name,
+                price=tariff.price,
+                duration_days=tariff.duration_days,
+            )
+            for tariff in tariffs
         )

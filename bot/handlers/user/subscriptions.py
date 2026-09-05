@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from bot.keyboards.user.subscriptions import profile_keyboard
+from bot.keyboards.user.subscriptions import profile_keyboard, tariffs_keyboard
 from bot.router import Router
 from database.session import session_factory
 from max_client import MaxBot
@@ -79,3 +79,32 @@ async def handle_profile(bot: MaxBot, update: dict) -> None:
         return
     _, callback_id, user_id = context
     await _show_profile(bot, callback_id, user_id)
+
+
+@router.callback("user:tariffs")
+async def handle_tariffs(bot: MaxBot, update: dict) -> None:
+    context = _callback_context(update)
+    if context is None:
+        return
+    _, callback_id, _ = context
+    async with session_factory() as session:
+        tariffs = await UserSubscriptionService(session).list_tariffs()
+    lines = ["Тарифы", ""]
+    if tariffs:
+        lines.extend(
+            f"{tariff.name} — {tariff.price:.2f} ₽ на {tariff.duration_days} дней"
+            for tariff in tariffs
+        )
+    else:
+        lines.append("Сейчас нет доступных тарифов.")
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": "\n".join(lines),
+            "attachments": [
+                tariffs_keyboard(
+                    tuple((tariff.id, tariff.name) for tariff in tariffs)
+                )
+            ],
+        },
+    )

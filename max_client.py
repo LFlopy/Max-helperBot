@@ -5,6 +5,12 @@ import aiohttp
 from config import MAX_API_TIMEOUT_SECONDS, MAX_API_URL
 
 
+class MaxAPIError(RuntimeError):
+    def __init__(self, status_code: int) -> None:
+        super().__init__(f"MAX API request failed with status {status_code}")
+        self.status_code = status_code
+
+
 class MaxBot:
     def __init__(self, token: str):
 
@@ -64,7 +70,8 @@ class MaxBot:
             f"{MAX_API_URL}{endpoint}",
             **kwargs,
         ) as response:
-            response.raise_for_status()
+            if response.status >= 400:
+                raise MaxAPIError(response.status)
 
             if response.status == 204:
                 return None

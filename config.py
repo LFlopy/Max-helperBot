@@ -44,6 +44,21 @@ except ValueError as error:
     raise RuntimeError("MAX_API_TIMEOUT_SECONDS must be a number") from error
 
 try:
+    _broadcast_send_interval_seconds = float(
+        os.getenv("BROADCAST_SEND_INTERVAL_SECONDS", "0.05")
+    )
+    _broadcast_retry_backoff_seconds = float(
+        os.getenv("BROADCAST_RETRY_BACKOFF_SECONDS", "1")
+    )
+except ValueError as error:
+    raise RuntimeError("Broadcast timing settings must be numbers") from error
+
+try:
+    _broadcast_max_attempts = int(os.getenv("BROADCAST_MAX_ATTEMPTS", "3"))
+except ValueError as error:
+    raise RuntimeError("BROADCAST_MAX_ATTEMPTS must be an integer") from error
+
+try:
     _free_history_limit = int(os.getenv("FREE_HISTORY_LIMIT", "10"))
 except ValueError as error:
     raise RuntimeError("FREE_HISTORY_LIMIT must be an integer") from error
@@ -66,10 +81,19 @@ if _trial_history_limit < 1:
     raise RuntimeError("TRIAL_HISTORY_LIMIT must be positive")
 if _max_api_timeout_seconds <= 0:
     raise RuntimeError("MAX_API_TIMEOUT_SECONDS must be positive")
+if _broadcast_send_interval_seconds < 0:
+    raise RuntimeError("BROADCAST_SEND_INTERVAL_SECONDS cannot be negative")
+if _broadcast_retry_backoff_seconds < 0:
+    raise RuntimeError("BROADCAST_RETRY_BACKOFF_SECONDS cannot be negative")
+if _broadcast_max_attempts < 1:
+    raise RuntimeError("BROADCAST_MAX_ATTEMPTS must be positive")
 
 MAX_BOT_TOKEN: str = _max_bot_token
 MAX_API_URL = "https://platform-api2.max.ru"
 MAX_API_TIMEOUT_SECONDS: float = _max_api_timeout_seconds
+BROADCAST_SEND_INTERVAL_SECONDS: float = _broadcast_send_interval_seconds
+BROADCAST_RETRY_BACKOFF_SECONDS: float = _broadcast_retry_backoff_seconds
+BROADCAST_MAX_ATTEMPTS: int = _broadcast_max_attempts
 
 WEBHOOK_SECRET: str = _webhook_secret
 WEBHOOK_URL: str = "https://ovchuntonova.ru/max-helper/webhook"

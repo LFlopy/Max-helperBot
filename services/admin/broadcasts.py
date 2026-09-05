@@ -6,12 +6,18 @@ from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import (
+    BROADCAST_MAX_ATTEMPTS,
+    BROADCAST_RETRY_BACKOFF_SECONDS,
+    BROADCAST_SEND_INTERVAL_SECONDS,
+)
 from database.models import Broadcast, BroadcastStatus
 from database.repositories import (
     BroadcastDeliveryRepository,
     BroadcastRepository,
     UserRepository,
 )
+from max_client import MaxAPIError
 
 
 logger = logging.getLogger(__name__)
@@ -35,23 +41,41 @@ class BroadcastResult:
     failed: int
 
 
+@dataclass(frozen=True, slots=True)
+class SendFailure:
+    code: str
+    retryable: bool
+
+
 class AdminBroadcastService:
     def __init__(
         self,
         session: AsyncSession,
         concurrency: int = 10,
         batch_size: int = 100,
+        send_interval_seconds: float = BROADCAST_SEND_INTERVAL_SECONDS,
+        max_attempts: int = BROADCAST_MAX_ATTEMPTS,
+        retry_backoff_seconds: float = BROADCAST_RETRY_BACKOFF_SECONDS,
     ) -> None:
         if concurrency < 1:
             raise ValueError("concurrency must be positive")
         if batch_size < 1:
             raise ValueError("batch_size must be positive")
+        if send_interval_seconds < 0 or retry_backoff_seconds < 0:
+            raise ValueError("broadcast timing cannot be negative")
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be positive")
         self.session = session
         self.broadcasts = BroadcastRepository(session)
         self.deliveries = BroadcastDeliveryRepository(session)
         self.users = UserRepository(session)
         self.concurrency = concurrency
         self.batch_size = batch_size
+        self.send_interval_seconds = send_interval_seconds
+        self.max_attempts = max_attempts
+        self.retry_backoff_seconds = retry_backoff_seconds
+        self._send_lock = asyncio.Lock()
+        self._next_send_at = 0.0
 
     async def get_recipient_count(self) -> int:
         return await self.users.count()
@@ -108,12 +132,13 @@ class AdminBroadcastService:
 
             batch = await self.deliveries.get_pending_batch(
                 broadcast.id,
-                max_attempts=1,
+                max_attempts=self.max_attempts,
                 limit=self.batch_size,
             )
             if not batch:
                 break
 
+            retry_pending = False
             for offset in range(0, len(batch), self.concurrency):
                 delivery_batch = batch[offset : offset + self.concurrency]
                 results = await asyncio.gather(
@@ -122,25 +147,40 @@ class AdminBroadcastService:
                         for _, max_user_id in delivery_batch
                     )
                 )
-                for (delivery, _), error_code in zip(
+                for (delivery, _), failure in zip(
                     delivery_batch,
                     results,
                     strict=True,
                 ):
-                    if error_code is None:
+                    if failure is None:
                         await self.deliveries.mark_sent(
                             delivery,
                             datetime.now(timezone.utc),
                         )
                     else:
+                        retry = (
+                            failure.retryable
+                            and delivery.attempts + 1 < self.max_attempts
+                        )
                         await self.deliveries.mark_failed_attempt(
                             delivery,
-                            error_code,
-                            retry=False,
+                            failure.code,
+                            retry=retry,
                         )
+                        retry_pending = retry_pending or retry
+                        if retry:
+                            logger.warning(
+                                "Retryable broadcast delivery error: "
+                                "broadcast_id=%s attempt=%s error=%s",
+                                broadcast.id,
+                                delivery.attempts,
+                                failure.code,
+                            )
 
             await self._refresh_counters(broadcast)
             await self.session.commit()
+            if retry_pending and self.retry_backoff_seconds:
+                await asyncio.sleep(self.retry_backoff_seconds)
 
         await self._refresh_counters(broadcast)
         finished_at = datetime.now(timezone.utc)
@@ -162,17 +202,38 @@ class AdminBroadcastService:
         total, sent, failed = await self.deliveries.get_counts(broadcast.id)
         await self.broadcasts.update_counters(broadcast, total, sent, failed)
 
-    @staticmethod
     async def _send(
+        self,
         sender: BroadcastSender,
         user_id: int,
         text: str,
-    ) -> str | None:
+    ) -> SendFailure | None:
+        await self._pace()
         try:
             await sender.send_message(user_id=user_id, text=text)
         except Exception as error:
-            return type(error).__name__
+            return SendFailure(
+                code=(
+                    f"http_{error.status_code}"
+                    if isinstance(error, MaxAPIError)
+                    else type(error).__name__
+                ),
+                retryable=(
+                    isinstance(error, MaxAPIError)
+                    and error.status_code == 429
+                ),
+            )
         return None
+
+    async def _pace(self) -> None:
+        if not self.send_interval_seconds:
+            return
+        async with self._send_lock:
+            loop = asyncio.get_running_loop()
+            delay = self._next_send_at - loop.time()
+            if delay > 0:
+                await asyncio.sleep(delay)
+            self._next_send_at = loop.time() + self.send_interval_seconds
 
     @staticmethod
     def _result(broadcast: Broadcast) -> BroadcastResult:

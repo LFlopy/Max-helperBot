@@ -7,6 +7,7 @@ from bot.handlers.user.capabilities import router as user_capabilities_router
 from bot.handlers.user.consultation import router as user_consultation_router
 from bot.handlers.user.main_menu import router as user_main_menu_router
 from bot.handlers.user.start import router as user_start_router
+from bot.handlers.user.subscriptions import router as user_subscriptions_router
 from bot.router import Router
 
 
@@ -20,4 +21,5 @@ ROUTERS: tuple[Router, ...] = (
     admin_users_router,
     admin_broadcasts_router,
     user_main_menu_router,
+    user_subscriptions_router,
 )

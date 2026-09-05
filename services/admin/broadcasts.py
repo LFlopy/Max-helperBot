@@ -47,6 +47,18 @@ class SendFailure:
     retryable: bool
 
 
+@dataclass(frozen=True, slots=True)
+class BroadcastSummary:
+    id: int
+    status: BroadcastStatus
+    total: int
+    sent: int
+    failed: int
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+
+
 class AdminBroadcastService:
     def __init__(
         self,
@@ -79,6 +91,14 @@ class AdminBroadcastService:
 
     async def get_recipient_count(self) -> int:
         return await self.users.count()
+
+    async def list_recent(self, limit: int = 5) -> tuple[BroadcastSummary, ...]:
+        broadcasts = await self.broadcasts.list_recent(limit)
+        return tuple(self._summary(item) for item in broadcasts)
+
+    async def get_summary(self, broadcast_id: int) -> BroadcastSummary | None:
+        broadcast = await self.broadcasts.get_by_id(broadcast_id)
+        return None if broadcast is None else self._summary(broadcast)
 
     async def create(
         self,
@@ -243,4 +263,17 @@ class AdminBroadcastService:
             total=broadcast.total_recipients,
             successful=broadcast.sent_count,
             failed=broadcast.failed_count,
+        )
+
+    @staticmethod
+    def _summary(broadcast: Broadcast) -> BroadcastSummary:
+        return BroadcastSummary(
+            id=broadcast.id,
+            status=broadcast.status,
+            total=broadcast.total_recipients,
+            sent=broadcast.sent_count,
+            failed=broadcast.failed_count,
+            created_at=broadcast.created_at,
+            started_at=broadcast.started_at,
+            finished_at=broadcast.finished_at,
         )

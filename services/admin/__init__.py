@@ -2,6 +2,7 @@ from services.admin.broadcasts import (
     AdminBroadcastService,
     BroadcastResult,
     BroadcastSender,
+    BroadcastSummary,
 )
 from services.admin.broadcast_recovery import BroadcastRecoveryManager
 from services.admin.statistics import AdminStatistics, AdminStatisticsService
@@ -37,4 +38,5 @@ __all__ = [
     "AdminTariffUnavailableError",
     "BroadcastResult",
     "BroadcastSender",
+    "BroadcastSummary",
 ]

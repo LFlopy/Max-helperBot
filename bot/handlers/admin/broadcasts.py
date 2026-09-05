@@ -1,16 +1,39 @@
+from datetime import datetime
+
 from bot.keyboards.admin.broadcasts import (
     broadcast_cancel_keyboard,
+    broadcast_list_keyboard,
     broadcast_preview_keyboard,
+    broadcast_status_keyboard,
     broadcasts_keyboard,
 )
 from bot.router import Router
 from bot.states.fsm import fsm
 from database.session import session_factory
 from max_client import MaxBot
-from services.admin import AdminBroadcastService
+from services.admin import AdminBroadcastService, BroadcastSummary
 
 
 router = Router()
+
+
+def _date_time(value: datetime | None) -> str:
+    return "—" if value is None else value.strftime("%d.%m.%Y %H:%M:%S")
+
+
+def _summary_text(summary: BroadcastSummary) -> str:
+    return "\n".join(
+        [
+            f"Рассылка #{summary.id}",
+            "",
+            f"Статус: {summary.status.value}",
+            f"Всего: {summary.total}",
+            f"Отправлено: {summary.sent}",
+            f"Ошибок: {summary.failed}",
+            f"Запущена: {_date_time(summary.started_at)}",
+            f"Завершена: {_date_time(summary.finished_at)}",
+        ]
+    )
 
 
 def _callback_context(update: dict) -> tuple[str, int] | None:
@@ -56,6 +79,57 @@ async def start_broadcast(bot: MaxBot, update: dict) -> None:
         message={
             "text": "Отправьте текст рассылки.",
             "attachments": [broadcast_cancel_keyboard()],
+        },
+    )
+
+
+@router.callback("admin:broadcasts:status")
+async def broadcast_statuses(bot: MaxBot, update: dict) -> None:
+    context = _callback_context(update)
+    if context is None:
+        return
+    callback_id, _ = context
+    async with session_factory() as session:
+        items = await AdminBroadcastService(session).list_recent()
+    lines = ["Последние рассылки", ""]
+    lines.extend(
+        f"#{item.id}: {item.status.value} ({item.sent}/{item.total}, ошибок {item.failed})"
+        for item in items
+    )
+    if not items:
+        lines.append("Рассылок пока нет.")
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": "\n".join(lines),
+            "attachments": [
+                broadcast_list_keyboard(tuple(item.id for item in items))
+            ],
+        },
+    )
+
+
+@router.callback_prefix("admin:broadcast:")
+async def broadcast_status(bot: MaxBot, update: dict) -> None:
+    context = _callback_context(update)
+    if context is None:
+        return
+    callback_id, _ = context
+    payload = update.get("callback", {}).get("payload")
+    if not isinstance(payload, str):
+        return
+    try:
+        broadcast_id = int(payload.rsplit(":", 1)[1])
+    except ValueError:
+        return
+    async with session_factory() as session:
+        summary = await AdminBroadcastService(session).get_summary(broadcast_id)
+    text = "Рассылка не найдена." if summary is None else _summary_text(summary)
+    await bot.answer_callback(
+        callback_id=callback_id,
+        message={
+            "text": text,
+            "attachments": [broadcast_status_keyboard()],
         },
     )
 
